@@ -21,3 +21,23 @@ Code Base: This project was built upon the foundation of a important research: h
 To use TiMERT in your project, simply clone the repository and follow the instructions provided in the following documentation:
 
 ## Environment
+This project uses Docker so it is not necessary to install anything directly on the host, you only need to have Docker (version 24.0.5 used). It is also advisable to have CUDA-compatible GPUs to make model wait times viable.
+
+### Construir la imagen
+
+The source code includes a Dockerfile to build the container, the suggested way to do this is to run the command in the root directory of the project:
+
+```
+docker build -t timert-image -f Dockerfile .
+```
+
+Once the image is built, the container can be run with the respective parameters:
+
+- -it: to prevent the execution from being left in the background.
+- -- gpus all: To take all the GPUs available in the system, this code allows you to select different GPUs to do various experiments. (remove if you do not have GPUS)
+- -v: to map the directories and make it possible to edit code from the host and have it immediately reflected in the container.
+
+```
+docker run -it --gpus all --name TiMERT-container -v ${PWD}:/opt/code timert-image /bin/bash
+```
+

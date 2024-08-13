@@ -1,0 +1,6 @@
+numpy==1.19.5
+tslearn==0.5.2
+scipy==1.6.2
+h5py
+torchviz
+typer
