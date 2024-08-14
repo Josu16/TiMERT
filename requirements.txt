@@ -4,3 +4,4 @@ scipy==1.6.2
 h5py
 torchviz
 typer
+transformers==4.30.2
