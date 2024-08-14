@@ -23,7 +23,7 @@ To use TiMERT in your project, simply clone the repository and follow the instru
 ## Environment
 This project uses Docker so it is not necessary to install anything directly on the host, you only need to have Docker (version 24.0.5 used). It is also advisable to have CUDA-compatible GPUs to make model wait times viable.
 
-### Construir la imagen
+### Build the image
 
 The source code includes a Dockerfile to build the container, the suggested way to do this is to run the command in the root directory of the project:
 
@@ -40,4 +40,16 @@ Once the image is built, the container can be run with the respective parameters
 ```
 docker run -it --gpus all --name TiMERT-container -v ${PWD}:/opt/code timert-image /bin/bash
 ```
+
+## Pre-Train
+
+To start pre-training you must properly configure the configuration file for pre-training or create your own and indicate it in the following command:
+
+````
+python timert_cli.py pretrain --gpu_id 0 --conf_file mae_001
+````
+
+Where:
+- gpu_id: It is the identifier of the gpu to use (default is zero)
+- conf_file: It is the file where all the model parameters are.
 
