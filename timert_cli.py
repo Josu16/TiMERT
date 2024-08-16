@@ -9,11 +9,9 @@ app = typer.Typer()
 
 @app.command()
 def pretrain(
-    conf_file: str = typer.Option(..., help="The configuration file to use"),
     gpu_id: str = typer.Option("0", help="The GPU ID to use")
 ):
     print(f"Selected GPU: {gpu_id}")
-    print(f"Config file: {conf_file}")
     
     global_params = TimertGlobalParams(
         data_dir = "UCRArchive_2018/",
@@ -39,7 +37,7 @@ def pretrain(
         dropout = 0.0,
         lr = 0.0001,
         batch_size = 128,
-        n_epoch = 2,
+        n_epoch = 150,
         n_ckpt = 100,
         )
 
@@ -52,6 +50,11 @@ def pretrain(
     timer_model.preprocessing_time_series()
     timer_model.start_pretrain()
 
+@app.command()
+def finetuning(
+    gpu_id: str = typer.Option("0", help="The GPU ID to use")
+):
+    print("Under construction")
 
 
 if __name__ == "__main__":

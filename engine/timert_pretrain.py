@@ -1,12 +1,14 @@
 ## RoBERTa approach
 import os
 import torch
+import time
+from tqdm import tqdm
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from scipy import signal
 from torch.utils.data import DataLoader, TensorDataset
-from transformers import RobertaConfig, RobertaModel
+from transformers import RobertaConfig, RobertaModel, Adafactor
 
 from engine.core.ts_transformer import Transformer
 from engine.core.timert_utils import _normalize_dataset, get_dataset, get_ucr_dataset_names, mask_data
@@ -27,7 +29,7 @@ class TimertPreTrain:
 
         ## Initial settings
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = "cpu" #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'Using device: {self.device}')
         np.random.seed(global_params.seed)
 
@@ -60,7 +62,7 @@ class TimertPreTrain:
         pretrain_data = []
         for data_name in self.pretrain_names:
             print("Processing dataset: ", data_name)
-            dataset, _ = get_dataset("UCRArchive_2018", data_name)  # TODO: regresar a ../UCRArchive cuando se refactorice.
+            dataset, _ = get_dataset("UCRArchive_2018", data_name, max_len=self.model_params.out_dim)
             data_pretrain = _normalize_dataset(dataset)
 
             # fasjfsfjsdfkasdj
@@ -77,15 +79,7 @@ class TimertPreTrain:
         dataset = TensorDataset(self.pretrain_data)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-
-        # config = RobertaConfig(
-        #     hidden_size=512,  # Ajustar el tamaño de embeddings a 512
-        #     num_hidden_layers=12,  # Mantener el mismo número de capas
-        #     num_attention_heads=8,  # Ajustar el número de cabezas de atención proporcionalmente
-        #     intermediate_size=2048  # Mantener el tamaño de la capa intermedia
-        # )
-        # model = RobertaModel(config).to(device)
-
+        # Definir el modelo
         model = Transformer(
             in_dim = self.model_params.in_dim,
             out_dim = self.model_params.out_dim,
@@ -99,41 +93,63 @@ class TimertPreTrain:
             dropout = self.model_params.dropout
         ).to(self.device)
 
-
+        print("Modelo inicializado:")
         print(model)
-
-        # print(model.num_parameters())
 
 
         # Definir la función de pérdida y el optimizador
         criterion = nn.MSELoss()  # Por ejemplo, MSE para series temporales
         optimizer = optim.Adam(model.parameters(), lr=self.model_params.lr)
 
-        # Paso 4: Entrenamiento (esquemático)
+        # Iniciar el contador total de tiempo
+        total_start_time = time.time()
+
+        # Entrenamiento
         for epoch in range(self.model_params.n_epoch):  # Número de épocas
-            for batch in dataloader:
-                masked_data, mask = mask_data(batch[0])  # Enmascarar datos
-                optimizer.zero_grad()
+            start_time = time.time()
+            total_loss = 0.0
 
-                # outputs = model(inputs_embeds=masked_data).last_hidden_state # se utiliza input_embeds para pasar directametne los embeddings
+            # Usamos tqdm para mostrar el progreso
+            with tqdm(dataloader, unit="batch") as tepoch:
+                tepoch.set_description(f"Epoch {epoch+1}/{self.model_params.n_epoch}")
+                for batch in tepoch:
+                    masked_data, mask = mask_data(batch[0])  # Enmascarar datos
+                    optimizer.zero_grad()
 
-                
-                outputs = model.forward(
-                    masked_data,
-                    normalize = False,
-                    to_numpy = False
-                )
+                    outputs = model.forward(
+                        masked_data,
+                        normalize=False,
+                        to_numpy=False
+                    )
 
-                outputs = outputs.unsqueeze(1)
+                    outputs = outputs.unsqueeze(1)
 
-                # print(outputs.shape)
-                # print(batch[0].shape)
+                    loss = criterion(outputs[mask], batch[0][mask])  # Comparar solo los valores enmascarados
+                    loss.backward()
+                    optimizer.step()
 
+                    total_loss += loss.item()
+                    tepoch.set_postfix(batch_loss=loss.item())  # Mostrar la pérdida del batch
 
-                loss = criterion(outputs[mask], batch[0][mask])  # Comparar solo los valores enmascarados
-                loss.backward()
-                optimizer.step()
-            print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+            # Calcular el tiempo de la época y la pérdida media
+            epoch_time = time.time() - start_time
+            # Convertir a minutos y segundos
+            minutes = int(epoch_time // 60)
+            seconds = int(epoch_time % 60)
 
-        print("Entrenamiento completado")
-        torch.save(model, 'TiMER-test-env.pth')
+            avg_loss = total_loss / len(dataloader)
+
+            print(f"Epoch {epoch+1} completed in {minutes} minutes and {seconds} seconds ({epoch_time:.2f} seconds).")
+            print(f" - (last) Batch Loss: {loss.item():.6f}, Average Loss: {avg_loss:.6f}")
+
+        # Calcular el tiempo total del entrenamiento
+        total_time = time.time() - total_start_time
+        total_days = int(total_time // (24 * 3600))
+        total_time = total_time % (24 * 3600)
+        total_hours = int(total_time // 3600)
+        total_time %= 3600
+        total_minutes = int(total_time // 60)
+        total_seconds = int(total_time % 60)
+
+        print(f"Pre-train completed in: {total_days} days, {total_hours} hours, {total_minutes} minutes, and {total_seconds} seconds.")
+        torch.save(model, 'TiMER-768-exp-7.pth')

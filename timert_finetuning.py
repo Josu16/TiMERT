@@ -4,11 +4,12 @@ import numpy as np
 from scipy import signal
 import torch
 import torch.nn as nn
+# from torch.optim import Adam
 import time
 import pandas as pd
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
@@ -20,7 +21,7 @@ class CustomTSClassifier(torch.nn.Module):
             self.add_module('encoder', encoder)
 
 
-            in_dim_ = 512  ## TODO: Volver variable
+            in_dim_ = 768  ## TODO: Volver variable
             out_dim_ = n_dim
             layers = OrderedDict()
 
@@ -61,7 +62,7 @@ def _relabel(label):
         label_re[label == label_i] = i
     return label_re, n_class
 
-def get_dataset(route, name, norm = True,  max_len = 512):
+def get_dataset(route, name, norm = True,  max_len = 768):
     train_path = route + '/' + name + '/' + name + "_TRAIN.tsv"
     test_path = route + '/' + name + '/' + name + "_TEST.tsv"
 
@@ -93,7 +94,7 @@ def get_dataset(route, name, norm = True,  max_len = 512):
     return data, labels
 
 # Cargar el modelo preentrenado
-model = torch.load('roberta_pretrained_model_exp1.pth') # <- actualmente v1 custom es el que se entreno con TODOS Los datos. el modelo tramposo
+model = torch.load('TiMER-768-exp-6.pth') # <- actualmente v1 custom es el que se entreno con TODOS Los datos. el modelo tramposo
 model.to(device)
 print("tipo de dato: ", type(model))
 
@@ -256,7 +257,7 @@ print("datasets para tareas posteriores: ", downstream_names)
 for data_name in downstream_names:
     print("Dataset: ", data_name)
 
-    data, labels = get_dataset("../UCRArchive_2018",data_name)
+    data, labels = get_dataset("UCRArchive_2018",data_name)
 
     labels, n_class = _relabel(labels)
 
@@ -445,4 +446,4 @@ for data_name in downstream_names:
         'Test Accuracy': test_accuracy
     }, ignore_index=True)
 
-results_df.to_csv("Resultados_segundo_enfoque_exp1.csv")
+results_df.to_csv("Resultados_experimento_6.csv")
