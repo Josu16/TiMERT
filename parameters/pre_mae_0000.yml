@@ -1,0 +1,37 @@
+# 
+global:
+  data_dir: "UCRArchive_2018/"
+  max_len: 512  # Max length of time series (must match with out_dim)
+  seed: 666
+
+# Preprocess data params
+preprocess:
+  pretrain_frac: 0.65
+  train_frac: 0.3
+  valid_frac: 0.1
+  test_frac: 0.1
+  is_same_length: True
+
+# Transformer architecture params
+model:
+  in_dim: 1           # Channels of TS
+  out_dim: 512        # Number of dimensions for represent the data
+  n_layer: 4          # Group of bocks of attention
+  n_dim: 64           # Intern representation dimensions
+  n_head: 8           # Attention heads
+  norm_first: True    # ?? review
+  is_pos: True        # If positional encoding will be applied
+  is_projector: True  # If projection will be applied
+  project_norm: "LN"  # Id projection will be norm
+  dropout: 0.0
+
+#  Self-supervised learning task params
+pretext_task:
+  mask_percent: 0.15  # percentaje of points to mask
+
+#  Training params
+train:
+  lr: 0.0001
+  batch_size: 128
+  n_epoch: 2
+  # early_stopping: True # importante agregar en el futuro

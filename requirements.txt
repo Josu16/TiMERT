@@ -6,3 +6,4 @@ torchviz==0.0.2
 typer==0.12.3
 transformers==4.30.2
 mlflow
+pyyaml==6.0
