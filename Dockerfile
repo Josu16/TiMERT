@@ -1,5 +1,6 @@
 # FROM pytorch/pytorch:1.10.2-cuda10.2-cudnn7-runtime
-FROM pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
+# FROM pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
+FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 
 # Instalar las dependencias del sistema necesarias
 RUN apt-get update && apt-get install -y \
@@ -19,11 +20,15 @@ RUN apt-get update && apt-get install -y \
     tmux \
     && apt-get clean
 
-    RUN mkdir /opt/code
-    WORKDIR /opt/code
+RUN mkdir /opt/code
+WORKDIR /opt/code
 
-    # Exponer el puerto en el que se ejecutará MLflow
-    EXPOSE 5000
-    
-    COPY requirements.txt /opt/code/requirements.txt
-    RUN pip install -r /opt/code/requirements.txt
+COPY requirements.txt /opt/code/requirements.txt
+RUN pip install -r /opt/code/requirements.txt
+
+# Exponer el puerto en el que se ejecutará MLflow
+EXPOSE 5000
+
+ENTRYPOINT ["mlflow", "ui"]
+
+CMD ["--host", "0.0.0.0", "--port", "5000"]

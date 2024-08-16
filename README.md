@@ -39,10 +39,10 @@ Once the image is built, the container can be run with the respective parameters
 
 ```
 // For GPUs Infraestructure
-docker run -it --gpus all --name TiMERT-container -v ${PWD}:/opt/code timert-image /bin/bash
+docker run -d -p 5000:5000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
 
 // For CPU Infraestructure (not recomended)
-docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image tail -f /dev/null
+docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
 
 ```
 

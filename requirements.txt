@@ -1,8 +1,8 @@
 numpy==1.19.5
 tslearn==0.5.2
 scipy==1.6.2
-h5py
-torchviz
-typer
+h5py==3.8.0
+torchviz==0.0.2
+typer==0.12.3
 transformers==4.30.2
 mlflow
