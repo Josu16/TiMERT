@@ -29,7 +29,7 @@ class TimertPreTrain:
 
         ## Initial settings
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
-        self.device = "cpu" #torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'Using device: {self.device}')
         np.random.seed(global_params.seed)
 
