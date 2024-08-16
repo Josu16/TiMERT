@@ -38,7 +38,12 @@ Once the image is built, the container can be run with the respective parameters
 - -v: to map the directories and make it possible to edit code from the host and have it immediately reflected in the container.
 
 ```
+// For GPUs Infraestructure
 docker run -it --gpus all --name TiMERT-container -v ${PWD}:/opt/code timert-image /bin/bash
+
+// For CPU Infraestructure (not recomended)
+docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image tail -f /dev/null
+
 ```
 
 ## Pre-Train

@@ -5,3 +5,4 @@ h5py
 torchviz
 typer
 transformers==4.30.2
+mlflow

@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y \
 
     RUN mkdir /opt/code
     WORKDIR /opt/code
+
+    # Exponer el puerto en el que se ejecutará MLflow
+    EXPOSE 5000
     
     COPY requirements.txt /opt/code/requirements.txt
     RUN pip install -r /opt/code/requirements.txt
