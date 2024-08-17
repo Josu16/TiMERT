@@ -1,5 +1,6 @@
 import typer
 import yaml
+import mlflow
 
 from engine.timert_pretrain import TimertPreTrain
 
@@ -19,10 +20,17 @@ def pretrain(
 
     print(type(all_params))
     print(all_params)
+    
+    
+    mlflow.start_run()
+    
+    try:
+        timer_model = TimertPreTrain(params = all_params, mlflow=mlflow, gpu_id=gpu_id)
+        timer_model.preprocessing_time_series()
+        timer_model.start_pretrain()
+    finally:
+        mlflow.end_run()
 
-    timer_model = TimertPreTrain(params = all_params, gpu_id=gpu_id)
-    timer_model.preprocessing_time_series()
-    timer_model.start_pretrain()
 
 @app.command()
 def finetuning(

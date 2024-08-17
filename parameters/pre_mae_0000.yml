@@ -33,5 +33,5 @@ pretext_task:
 train:
   lr: 0.0001
   batch_size: 128
-  n_epoch: 2
+  n_epoch: 150
   # early_stopping: True # importante agregar en el futuro

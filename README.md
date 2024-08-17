@@ -39,19 +39,30 @@ Once the image is built, the container can be run with the respective parameters
 
 ```
 // For GPUs Infraestructure
-docker run -d -p 5000:5000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
+docker run -d -p 3000:3000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
 
 // For CPU Infraestructure (not recomended)
 docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
 
 ```
 
+## Enter to container bash
+
+```
+docker exec -it timert bash
+```
+
+## MLFlow for experiment tracking
+
+The container includes an **instance of MLFLow UI** running in localhost and ready on the **port 5000**. All the experiments an models are located in the /mlruns directory.
+
+
 ## Pre-Train
 
-To start pre-training you must properly configure the configuration file for pre-training or create your own and indicate it in the following command:
+To start pre-training you must properly configure the parameter file for pre-training located on /parameters or create your own and indicate it in the following command:
 
 ````
-python timert_cli.py pretrain --gpu_id 0 --conf_file mae_001
+python timert_cli.py pretrain --conf-file pre_mae_0000
 ````
 
 Where:

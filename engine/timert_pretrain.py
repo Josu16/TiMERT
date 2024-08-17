@@ -15,7 +15,8 @@ from engine.core.timert_utils import _normalize_dataset, get_dataset, get_ucr_da
 
 class TimertPreTrain:
     
-    def __init__(self, params, gpu_id: str):
+    def __init__(self, params, mlflow, gpu_id: str):
+        self.mlflow = mlflow
 
         self.global_params = params["global"]
         self.prep_params = params["preprocess"]
@@ -29,6 +30,20 @@ class TimertPreTrain:
         print(f'Using device: {self.device}')
         np.random.seed(self.global_params["seed"])
 
+        # MLflow: Iniciar un run en MLflow
+        # mlflow.start_run()  # MLflow
+
+        # MLflow: Registrar hiperparámetros globales
+        for key, value in self.global_params.items():  # MLflow
+            self.mlflow.log_param(key, value)  # MLflow
+
+        # MLflow: Registrar hiperparámetros globales
+        for key, value in self.prep_params.items():  # MLflow
+            self.mlflow.log_param(key, value)  # MLflow
+
+        # MLflow: Registrar hiperparámetros globales
+        for key, value in self.model_params.items():  # MLflow
+            self.mlflow.log_param(key, value)  # MLflow
 
         # Split dataset
         data_names = get_ucr_dataset_names()
@@ -47,11 +62,13 @@ class TimertPreTrain:
         self.pretrain_names = data_names[pretrain_index]
         downstream_names = data_names[remaining_index]
 
+        # MLflow: Registrar los nombres de los datasets usados
+        self.mlflow.log_param("pretrain_datasets", str(self.pretrain_names))  # MLflow
+        self.mlflow.log_param("downstream_datasets", str(downstream_names))  # MLflow
+
         # checking the datasets
         print("Datasets for pre-training: ", self.pretrain_names)
         print("Datasets for downstream tasks: ", downstream_names)
-
-
 
     def preprocessing_time_series(self):
         # preparación de las series temporales
@@ -61,14 +78,12 @@ class TimertPreTrain:
             dataset, _ = get_dataset("UCRArchive_2018", data_name, max_len=self.model_params["out_dim"])
             data_pretrain = _normalize_dataset(dataset)
 
-            # fasjfsfjsdfkasdj
             pretrain_data.append(data_pretrain)
 
         pretrain_data = np.concatenate(pretrain_data, axis=0)
 
         print("Pre-train dataset final shape: ", pretrain_data.shape)
         self.pretrain_data = torch.tensor(pretrain_data, dtype=torch.float32).to(self.device)  # Convertir los datos a un tensor de PyTorch
-
 
     def start_pretrain(self):
         batch_size = self.train_params["batch_size"]  # Definir el tamaño del batch
@@ -92,10 +107,17 @@ class TimertPreTrain:
         print("Modelo inicializado:")
         print(model)
 
+        # MLflow: Registrar la arquitectura del modelo
+        self.mlflow.log_param("model_architecture", model.__str__())  # MLflow
 
         # Definir la función de pérdida y el optimizador
         criterion = nn.MSELoss()  # Por ejemplo, MSE para series temporales
         optimizer = optim.Adam(model.parameters(), lr=self.train_params["lr"])
+
+        # MLflow: Registrar los parámetros del optimizador y la función de pérdida
+        self.mlflow.log_param("optimizer_name", optimizer.__str__())  # MLflow
+        self.mlflow.log_param("learning_rate", self.train_params["lr"])  # MLflow
+        self.mlflow.log_param("loss_function", criterion.__str__())  # MLflow
 
         # Iniciar el contador total de tiempo
         total_start_time = time.time()
@@ -130,11 +152,15 @@ class TimertPreTrain:
 
             # Calcular el tiempo de la época y la pérdida media
             epoch_time = time.time() - start_time
+            avg_loss = total_loss / len(dataloader)
+
+            # MLflow: Registrar la pérdida y el tiempo de la época
+            self.mlflow.log_metric("epoch_time", epoch_time, step=epoch)  # MLflow
+            self.mlflow.log_metric("average_loss", avg_loss, step=epoch)  # MLflow
+
             # Convertir a minutos y segundos
             minutes = int(epoch_time // 60)
             seconds = int(epoch_time % 60)
-
-            avg_loss = total_loss / len(dataloader)
 
             print(f"Epoch {epoch+1} completed in {minutes} minutes and {seconds} seconds ({epoch_time:.2f} seconds).")
             print(f" - (last) Batch Loss: {loss.item():.6f}, Average Loss: {avg_loss:.6f}")
@@ -148,5 +174,20 @@ class TimertPreTrain:
         total_minutes = int(total_time // 60)
         total_seconds = int(total_time % 60)
 
-        print(f"Pre-train completed in: {total_days} days, {total_hours} hours, {total_minutes} minutes, and {total_seconds} seconds.")
-        torch.save(model, 'TiMER-768-exp-7.pth')
+        formated_time = f"{total_days} days, {total_hours} hours, {total_minutes} minutes, and {total_seconds} seconds"
+        print(f"Pre-train completed in: {formated_time}")
+
+        # MLflow: Registrar el tiempo total de entrenamiento
+        self.mlflow.log_metric("total_training_time", time.time() - total_start_time)  # MLflow
+        self.mlflow.log_param("total_training_time_formated", formated_time)  # MLflow
+
+        # Guardar el modelo
+        model_path = 'TiMER-768-exp-7.pth'
+        torch.save(model, model_path)
+        print(f"Modelo guardado en {model_path}")
+        
+        # MLflow: Guardar el modelo en MLflow
+        self.mlflow.pytorch.log_model(model, "model")  # MLflow
+        
+        # MLflow: Finalizar el run
+        # mlflow.end_run()  # MLflow
