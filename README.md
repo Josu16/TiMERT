@@ -39,7 +39,7 @@ Once the image is built, the container can be run with the respective parameters
 
 ```
 // For GPUs Infraestructure
-docker run -d -p 3000:3000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
+docker run -d -p 5000:5000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
 
 // For CPU Infraestructure (not recomended)
 docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
@@ -62,10 +62,36 @@ The container includes an **instance of MLFLow UI** running in localhost and rea
 To start pre-training you must properly configure the parameter file for pre-training located on /parameters or create your own and indicate it in the following command:
 
 ````
-python timert_cli.py pretrain --conf-file pre_mae_0000
+python timert_cli.py pretrain --conf-file pre_mae_0000 --register
 ````
 
 Where:
-- gpu_id: It is the identifier of the gpu to use (default is zero)
-- conf_file: It is the file where all the model parameters are.
+- --gpu_id: It is the identifier of the gpu to use (default is zero)
+- --conf_file: It is the file where all the model parameters are.
+- --register: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations.
 
+## Troubleshooting
+
+Getting MLflow UI up and running is easy if you are working directly on the container from the local machine because the container run command maps the corresponding ports, but, if there are more ssh connections in between. For example: Host -> Server 1 -> Server 2 -> TiMERT container, it will be necessary to set the number of ssh tunnels needed to reach the container, for this case it would have to be done like this:
+
+```
+ssh -L 5000:localhost:5000 user@server1
+```
+
+inside server 1 do:
+
+```
+ssh -L 5000:localhost:5000 user@server2
+```
+
+and this as many times as there are servers to connect to in order to reach the container, this way you can open the mlflow manager on the local host like this:
+
+http://localhost:5000
+
+**NOTE**: you must ensure that on none of the servers or the host, port 5000 is used (configured by default for mlflow with TiMERT), this is done with the command:
+
+```
+netstat -tuln | grep 5000
+```
+
+If the above command gives an output before starting the container, then it is busy and you need to modify the dockerfile and port mapping to a free one before running the container.
