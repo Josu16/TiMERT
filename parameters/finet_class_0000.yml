@@ -3,17 +3,17 @@ global:
   data_dir: "UCRArchive_2018/"
   max_len: 512  # Max length of time series (must match with out_dim)
   seed: 666
-  pre_train_model: "" # Must be the path to the base model to train.
 
 # Preprocess data params
 preprocess:
-  train_frac: 0.3
-  valid_frac: 0.1
-  test_frac: 0.1
+  pretrain_frac: 0.65
+  train_frac: 0.6
+  valid_frac: 0.2
+  test_frac: 0.2
   is_same_length: True
 
 # Transformer architecture params
-model:
+encoder:
   in_dim: 1           # Channels of TS
   out_dim: 512        # Number of dimensions for represent the data
   n_layer: 4          # Group of bocks of attention
@@ -26,13 +26,13 @@ model:
   dropout: 0.0
 
 #  Downstream task
-cassifier:
+classifier:
   n_dim: 64
-  n_layer: 2
+  n_layer_class: 2
 
 #  Training params
 train:
   lr: 0.0001
   batch_size: 64
-  n_epoch: 400
+  n_epoch: 2 # con 10 va bien
   # early_stopping: True # importante agregar en el futuro
