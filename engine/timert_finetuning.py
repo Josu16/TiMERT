@@ -119,7 +119,7 @@ class TimertFineTuning:
 
                 # parámetros del clasificador
 
-                classifier = CustomTSClassifier(self.model, n_class, n_dim = 64, n_layer = 2).to(self.device)
+                classifier = CustomTSClassifier(self.model, self.encoder_params["out_dim"], n_dim = 64, n_layer = 2).to(self.device)
                 print("Classifier created")
 
                 self.mlflow.log_param("classifier_architecture", classifier.__str__())

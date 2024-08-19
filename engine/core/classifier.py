@@ -3,12 +3,12 @@ import torch.nn as nn
 from collections import OrderedDict
 
 class CustomTSClassifier(torch.nn.Module):
-    def __init__(self, encoder, n_class, n_dim = 64, n_layer = 2):
+    def __init__(self, encoder, n_class, in_dim, n_dim = 64, n_layer = 2):
         super(CustomTSClassifier, self).__init__()
         self.encoder = encoder
         self.add_module('encoder', encoder)
 
-        in_dim_ = 512  ## TODO: Volver variable
+        in_dim_ = in_dim
         out_dim_ = n_dim
         layers = OrderedDict()
 
