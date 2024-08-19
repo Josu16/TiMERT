@@ -64,6 +64,54 @@ def get_dataset(route, name, norm = True,  max_len = 512):
     
     return data, labels
 
+def format_time(end_time, start_time):
+    # Calcular el tiempo total del entrenamiento
+    total_time = end_time - start_time
+    total_days = int(total_time // (24 * 3600))
+    total_time = total_time % (24 * 3600)
+    total_hours = int(total_time // 3600)
+    total_time %= 3600
+    total_minutes = int(total_time // 60)
+    total_seconds = int(total_time % 60)
+
+    return f"{total_days} days, {total_hours} hours, {total_minutes} minutes, and {total_seconds} seconds"
+
+def timert_split_data(pretrain_frac, mlflow):
+    data_names = get_ucr_dataset_names()
+
+    total_datasets = len(data_names)
+    pretrain_size = int(total_datasets * pretrain_frac)
+
+    index = np.random.permutation(total_datasets)
+
+    pretrain_index = index[:pretrain_size]
+    remaining_index = index[pretrain_size:]
+
+    print("Pretrain size dataset (joined): ", pretrain_index.shape)
+    print("Remaining size dataset (joined):", remaining_index.shape)
+
+    pretrain_names = data_names[pretrain_index]
+    downstream_names = data_names[remaining_index]
+
+    # MLflow: Registrar los nombres de los datasets usados
+    mlflow.log_param("pretrain_datasets", str(pretrain_names))  # MLflow
+    mlflow.log_param("downstream_datasets", str(downstream_names))  # MLflow
+
+    # checking the datasets
+    print("Datasets for pre-training: ", pretrain_names)
+    print("Datasets for downstream tasks: ", downstream_names)
+
+    return pretrain_frac, downstream_names
+
+def _relabel(label):
+    label_set = np.unique(label)
+    n_class = len(label_set)
+
+    label_re = np.zeros(label.shape[0], dtype=int)
+    for i, label_i in enumerate(label_set):
+        label_re[label == label_i] = i
+    return label_re, n_class
+
 def get_ucr_dataset_names() -> np.array:
     return np.array([
         'Adiac',

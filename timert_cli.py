@@ -3,6 +3,7 @@ import yaml
 import mlflow
 
 from engine.timert_pretrain import TimertPreTrain
+from engine.timert_finetuning import TimertFineTuning
 
 app = typer.Typer()
 
@@ -37,10 +38,36 @@ def pretrain(
 
 @app.command()
 def finetuning(
-    gpu_id: str = typer.Option("0", help="The GPU ID to use")
+    conf_file: str = typer.Option(..., help="The configuration file name"),
+    gpu_id: str = typer.Option("0", help="The GPU ID to use"),
+    enc_name: str = typer.Option(..., help="The name of pretrained model (consult MLflow)"),
+    enc_ver: str = typer.Option(..., help="The version of pretrained model (consult MLflow)")
 ):
-    print("Under construction")
+    print(f"Selected File: {conf_file}")
+    print(f"Selected GPU: {gpu_id}")
+    print(f"Model name: {gpu_id}")
+    print(f"Selected GPU: {gpu_id}")
 
+
+    with open(f'parameters/{conf_file}.yml', 'r') as file:
+        all_params = yaml.safe_load(file)
+    
+    encoder = {
+        "name": enc_name,
+        "version": enc_ver
+    }
+
+    mlflow.set_experiment("Fine-tuning")
+    mlflow.enable_system_metrics_logging() # enable if need logs
+    mlflow.set_system_metrics_sampling_interval(10)
+    mlflow.start_run()
+    print("MLFlow Started")
+    try:
+        timert_model = TimertFineTuning(params = all_params, encoder= encoder, mlflow=mlflow, gpu_id=gpu_id)
+        timert_model.runn_all_models()
+    finally:
+        print("MLFlow Finished")
+        mlflow.end_run()
 
 if __name__ == "__main__":
     app()

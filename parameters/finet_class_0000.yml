@@ -6,11 +6,14 @@ global:
 
 # Preprocess data params
 preprocess:
-  pretrain_frac: 0.65  # Por ahora se dividen por dataset, no por instancia.
+  pretrain_frac: 0.65
+  train_frac: 0.6
+  valid_frac: 0.2
+  test_frac: 0.2
   is_same_length: True
 
 # Transformer architecture params
-model:
+encoder:
   in_dim: 1           # Channels of TS
   out_dim: 512        # Number of dimensions for represent the data
   n_layer: 4          # Group of bocks of attention
@@ -22,13 +25,14 @@ model:
   project_norm: "LN"  # Id projection will be norm
   dropout: 0.0
 
-#  Self-supervised learning task params
-pretext_task:
-  mask_percent: 0.15  # percentaje of points to mask
+#  Downstream task
+classifier:
+  n_dim: 64
+  n_layer_class: 2
 
 #  Training params
 train:
   lr: 0.0001
-  batch_size: 128
-  n_epoch: 400
+  batch_size: 64
+  n_epoch: 2 # con 10 va bien
   # early_stopping: True # importante agregar en el futuro

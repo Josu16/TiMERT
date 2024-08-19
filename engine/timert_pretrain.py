@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from transformers import RobertaConfig, RobertaModel, Adafactor
 
 from engine.core.ts_transformer import Transformer
-from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, get_ucr_dataset_names, mask_data
+from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, get_ucr_dataset_names, mask_data, timert_split_data
 
 
 class TimertPreTrain:
@@ -46,30 +46,12 @@ class TimertPreTrain:
         for key, value in self.model_params.items():  # MLflow
             self.mlflow.log_param(key, value)  # MLflow
 
+        # MLflow: Registrar hiperparámetros de la tarea de pretexto
+        for key, value in self.pretext_params.items():  # MLflow
+            self.mlflow.log_param(key, value)  # MLflow
+
         # Split dataset
-        data_names = get_ucr_dataset_names()
-
-        total_datasets = len(data_names)
-        pretrain_size = int(total_datasets * self.prep_params["pretrain_frac"])
-
-        index = np.random.permutation(total_datasets)
-
-        pretrain_index = index[:pretrain_size]
-        remaining_index = index[pretrain_size:]
-
-        print("Pretrain size dataset (joined): ", pretrain_index.shape)
-        print("Remaining size dataset (joined):", remaining_index.shape)
-
-        self.pretrain_names = data_names[pretrain_index]
-        downstream_names = data_names[remaining_index]
-
-        # MLflow: Registrar los nombres de los datasets usados
-        self.mlflow.log_param("pretrain_datasets", str(self.pretrain_names))  # MLflow
-        self.mlflow.log_param("downstream_datasets", str(downstream_names))  # MLflow
-
-        # checking the datasets
-        print("Datasets for pre-training: ", self.pretrain_names)
-        print("Datasets for downstream tasks: ", downstream_names)
+        self.pretrain_names, _ = timert_split_data(self.prep_params["pretrain_fracc"], self.mlflow)
 
     def preprocessing_time_series(self):
         # preparación de las series temporales
@@ -120,7 +102,7 @@ class TimertPreTrain:
         self.mlflow.log_param("optimizer_name", optimizer.__str__())  # MLflow
         self.mlflow.log_param("learning_rate", self.train_params["lr"])  # MLflow
         self.mlflow.log_param("loss_function", criterion.__str__())  # MLflow
-        self.mlflow.log_param("aditional_loss_function", aux_criterion.__str__())  # MLflow
+        self.mlflow.log_param("n_epoch", self.train_params["n_epoch"])  # MLflow
 
         # Iniciar el contador total de tiempo
         total_start_time = time.time()
