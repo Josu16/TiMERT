@@ -2,14 +2,18 @@ from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import numpy as np
 from scipy import signal
+from engine.core.timert_utils import format_time, get_dataset
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+from TSTransformer import Transformer
+from tqdm import tqdm
 # from torch.optim import Adam
 import time
 import pandas as pd
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
@@ -19,7 +23,6 @@ class CustomTSClassifier(torch.nn.Module):
             super(CustomTSClassifier, self).__init__()
             self.encoder = encoder
             self.add_module('encoder', encoder)
-
 
             in_dim_ = 512  ## TODO: Volver variable
             out_dim_ = n_dim
@@ -62,39 +65,9 @@ def _relabel(label):
         label_re[label == label_i] = i
     return label_re, n_class
 
-def get_dataset(route, name, norm = True,  max_len = 512):
-    train_path = route + '/' + name + '/' + name + "_TRAIN.tsv"
-    test_path = route + '/' + name + '/' + name + "_TEST.tsv"
-
-    print(os.getcwd())
-
-    dataset = np.concatenate(
-            (np.loadtxt(train_path), np.loadtxt(test_path)),
-            axis=0
-        )
-
-    # spec del dataset
-    rows = dataset.shape[0]
-    ts_len = dataset.shape[1] - 1
-
-    # aislar la columna de etiquetas
-    labels = dataset[:, 0].astype(int)
-    # aislar el resto del dataset
-    data = dataset[:, 1:]
-    # expandir el dataset a las dimensiones que espera el codificador
-    data = np.expand_dims(data, 1)
-
-    if ts_len != max_len:
-        # resampleo con transformada de Fourier
-        data = signal.resample(data, max_len, axis = 2)  
-    
-    print(data.shape)
-    print(labels.shape)
-    
-    return data, labels
 
 # Cargar el modelo preentrenado
-model = torch.load('best_model.pth') # <- actualmente v1 custom es el que se entreno con TODOS Los datos. el modelo tramposo
+model = torch.load('best_model.pth')  # <- actualmente v1 custom es el que se entreno con TODOS Los datos. el modelo tramposo
 model.to(device)
 print("tipo de dato: ", type(model))
 
@@ -252,7 +225,7 @@ downstream_names = data_names[remaining_index]
 print("datasets de pre entrenamiento: ", pretrain_names)
 print("datasets para tareas posteriores: ", downstream_names)
 
-
+all_metrics = []
 
 for data_name in downstream_names:
     print("Dataset: ", data_name)
@@ -269,10 +242,13 @@ for data_name in downstream_names:
 
     assert np.isclose(train_frac + valid_frac + test_frac, 1.0)
 
+    # print("data: ", data)
+
     train_data, tmp_data, train_labels, tmp_labels = train_test_split(
         data, labels, train_size = train_frac , stratify = labels, random_state = 666
     )
 
+    # print("tentrada x", train_data)
     # separar el resto en validación y prueba, ajustando las fracciones
     remaining_frac = valid_frac + test_frac
     valid_size = valid_frac / remaining_frac
@@ -302,6 +278,8 @@ for data_name in downstream_names:
     ## -------------------- PREPROCESAMIENTO DE LAS SEREIS ------------------------------
 
     train_data = _normalize_dataset(train_data)
+    valid_data = _normalize_dataset(valid_data)
+    test_data = _normalize_dataset(test_data)
 
     ## -------------------- PREPARACIÓN DEL MODELO ------------------------------
 
@@ -311,139 +289,146 @@ for data_name in downstream_names:
 
     ## -------------------- PREPARACIÓN y ENTRENAMIENTO DEL MODELO ------------------------------
 
-
     # print("Número de dimensiones de salida: ", model.out_dim)
-    model.train() 
 
     ## Parámetros:
     lr = 0.0001
     optimizer = torch.optim.AdamW(
         model.parameters(), lr = lr
     )
+    criterion = nn.CrossEntropyLoss()
     n_data = train_data.shape[0]
     batch_size = 64
     n_iter = np.ceil((n_data / batch_size))
     n_iter = int(n_iter)
-    n_epoch = 400
+    n_epoch = 10
 
-    loss_train = np.zeros(n_epoch)
-    toc_train = np.zeros(n_epoch)
+    train_data = torch.tensor(train_data, dtype=torch.float32).to(device)
+    train_labels = torch.tensor(train_labels, dtype=torch.long).to(device)
 
-    for i in range(0, n_epoch):
-        tic = time.time()
-        loss_epoch = 0
-        idx_order = np.random.permutation(n_data)
-        # print("tamaño de idx order ", idx_order.shape)
-        # print("idx_order ", idx_order)
+    valid_data = torch.tensor(valid_data, dtype=torch.float32).to(device)
+    valid_labels = torch.tensor(valid_labels, dtype=torch.long).to(device)
 
-        for j in range(n_iter):
-            optimizer.zero_grad()
-
-            idx_start = j * batch_size
-            idx_end = (j + 1) * batch_size
-            if idx_end > n_data:
-                idx_end = n_data
-            idx_batch = idx_order[idx_start:idx_end]
-
-            batch_size_ = idx_end - idx_start
-            if batch_size_ < batch_size:
-                n_fill = batch_size - batch_size_
-                idx_fill = idx_order[:n_fill]
-                idx_batch = np.concatenate((idx_batch, idx_fill), axis=0)
-
-            # print("idx start ", idx_start)
-            # print("idx end ", idx_end)
-            # print("Batch size ", batch_size_)
-            # print("idx_batch ", idx_batch)
+    test_data = torch.tensor(test_data, dtype=torch.float32).to(device)
+    test_labels = torch.tensor(test_labels, dtype=torch.long).to(device)
 
 
-            data_batch = train_data[idx_batch, :, :]
-            label_batch = train_labels[idx_batch]
+    dataset = TensorDataset(train_data, train_labels)
+    dataloader = DataLoader(dataset, batch_size = batch_size, shuffle = True)
 
-            data_batch = torch.from_numpy(data_batch).to(device, dtype=torch.long)
+    dataset_valid = TensorDataset(valid_data, valid_labels)
+    dataloader_valid = DataLoader(dataset_valid, batch_size = batch_size, shuffle = True)
 
-            label_batch = torch.from_numpy(label_batch)
-            label_batch = label_batch.to(device, dtype=torch.long)
+    dataset_test = TensorDataset(test_data, test_labels)
+    dataloader_test = DataLoader(dataset_test, batch_size = batch_size, shuffle = True)
 
-            logits = classifier.forward(data_batch)
+    total_start_time = time.time()
 
-            # print("forma de logits: ", logits.shape)
-            # print("forma de label_batch: ", label_batch.shape)
+    best_eval_loss = float("inf")
+    best_epoch = None
 
-            loss = nn.CrossEntropyLoss()(logits, label_batch)
-            loss.backward()
-            optimizer.step()
-            loss_epoch += loss.item()
+    for epoch in range(n_epoch):
+        classifier.train()
+        start_time = time.time()
+        train_loss = 0
 
-        loss_epoch /= n_iter
-        toc_epoch = time.time() - tic
+        correct_pred = 0
+        total_examples = 0
 
-        loss_train[i] = loss_epoch
-        toc_train[i] = toc_epoch
+        with tqdm(dataloader, unit="batch") as tepoch:
+            tepoch.set_description(f"Epoch {epoch+1}/{n_epoch}")
+            for batch in tepoch:
+                optimizer.zero_grad()
 
-        print((f'epoch {i + 1}/{n_epoch}, '
-                f'loss={loss_epoch:0.4f}, '
-                f'time={toc_epoch:0.2f}.'))
+                ## Forward + backward + optimizar
+                logits = classifier.forward(batch[0])
+                loss = criterion(logits, batch[1])
+                loss.backward()
+                optimizer.step()
 
-    ## -------------------- VALIDACIÓN y PRUEBA DEL MODELO. ------------------------------
+                # Estadísticas
+                train_loss += loss.item()
+                _, pred = torch.max(logits, dim=1)
+                correct_pred += torch.sum(pred == batch[1]).item()
+                total_examples += batch[1].size(0)
 
-    def evaluate(model, data, labels, batch_size):
-        model.eval()  # Poner el modelo en modo de evaluación
-        n_data = data.shape[0]
-        n_iter = np.ceil(n_data / batch_size)
-        n_iter = int(n_iter)
-        
-        correct_predictions = 0
-        total_predictions = 0
-        running_loss = 0.0
-        criterion = nn.CrossEntropyLoss()
-        
-        with torch.no_grad():  # Desactivar el cálculo de gradientes
-            for i in range(n_iter):
-                idx_start = i * batch_size
-                idx_end = (i + 1) * batch_size
-                if idx_end > n_data:
-                    idx_end = n_data
+                # Impresión consola
+                tepoch.set_postfix(batch_loss=loss.item())
+
+        # Calcular la pérdida promedio
+        avg_train_loss = train_loss / len(dataloader)
+        # Calcular la exacitud.
+        train_accuracy = (100 * correct_pred / total_examples)
+
+        # Estadísticas de entrenamiento
+        print(f" - TRAIN: (last) Batch Loss: {loss.item():.6f}, Average Loss: {avg_train_loss:.6f}, --->[Accuracy: {train_accuracy:0.6f}%]")
+
+        # ----------------------- COMIENZA LA EVALUACIÓN
+        val_loss = 0
+        total_examples = 0
+        correct_pred = 0
+        # Validación del modelo
+        classifier.eval()
+        with torch.no_grad():
+            with tqdm(dataloader_valid, unit="batch") as tepoch:
+                tepoch.set_description(f"Epoch validation")
+                for batch in tepoch:
+                    outputs_valid = classifier.forward(batch[0])
+                    loss = criterion(outputs_valid, batch[1])
+
+                    # estadísticas
+                    val_loss += loss.item()
+                    _, pred = torch.max(outputs_valid, dim=1)
+                    correct_pred += torch.sum(pred == batch[1]).item()
+                    total_examples += batch[1].size(0)  # TODO: este puede ya no ser necesario, está calculado en el train
                 
-                data_batch = data[idx_start:idx_end, :, :]
-                label_batch = labels[idx_start:idx_end]
+                # Calcular la pérdida promedio de la validación
+                avg_val_loss = val_loss / len(dataloader_valid)
+                # Calcular la exactitud de validación
+                eval_accuracy = (100 * correct_pred / total_examples)
+                # Estadísticas de entrenamiento
+                print(f" - VALIDATION: (last) Batch Loss: {loss.item():.6f}, Average Loss: {avg_val_loss:.6f}, Accuracy: {eval_accuracy:0.6f}%")
 
-                data_batch = torch.from_numpy(data_batch).to(device, dtype=torch.float32)
-                label_batch = torch.from_numpy(label_batch).to(device, dtype=torch.long)
-                
-                logits = model.forward(data_batch)
-                loss = criterion(logits, label_batch)
-                running_loss += loss.item()
-                
-                _, predicted = torch.max(logits, 1)
-                correct_predictions += (predicted == label_batch).sum().item()
-                total_predictions += label_batch.size(0)
-        
-        accuracy = correct_predictions / total_predictions
-        avg_loss = running_loss / n_iter
-        return avg_loss, accuracy
+        # calcular el tiempo de la época
+        epoch_time = time.time() - start_time
+        # Convertir a minutos y segundos
+        minutes_epoch = int(epoch_time // 60)
+        seconds_epoch = int(epoch_time % 60)
+        print(f"Epoch {epoch+1} completed in {minutes_epoch} minutes and {seconds_epoch} seconds ({epoch_time:.2f} seconds).")
+
+        # # Buscar el mejor modelo
+        if avg_val_loss < best_eval_loss:
+            best_epoch = epoch
+            best_model_params = classifier.state_dict()
+
+            best_train_loss = avg_train_loss
+            best_train_accuracy = train_accuracy
+            best_eval_loss = avg_val_loss
+            best_eval_accuracy = eval_accuracy
+
+    total_end_time = time.time()
+    formated_time = format_time(total_end_time, total_start_time)
+    print(f"train and validate completed in: {formated_time}")
 
 
-    valid_data = _normalize_dataset(valid_data)
-    test_data = _normalize_dataset(test_data)
+    ## -------------------- PRUEBA DEL MODELO. ------------------------------
+    classifier.load_state_dict(best_model_params)
+    classifier.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in dataloader_test:
+            outputs = classifier.forward(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    test_accuracy = 100 * correct / total
+    print(f"\n\t --- TEST --- [{data_name}] Accuracy: {test_accuracy:0.6f}% \n")
 
-    batch_size = 64  # Define el tamaño del batch para la validación y prueba
+    # # Agregar los resultados a la lista
+    all_metrics.append([data_name, best_epoch, best_train_loss, best_train_accuracy, best_eval_loss, best_eval_accuracy, test_accuracy])
 
-    # Validación del modelo
-    val_loss, val_accuracy = evaluate(classifier, valid_data, valid_labels, batch_size)
-    print(f'Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}')
-
-    # Prueba del modelo
-    test_loss, test_accuracy = evaluate(classifier, test_data, test_labels, batch_size)
-    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
-
-    # Agregar los resultados al DataFrame
-    results_df = results_df.append({
-        'Dataset': data_name,
-        'Validation Loss': val_loss,
-        'Validation Accuracy': val_accuracy,
-        'Test Loss': test_loss,
-        'Test Accuracy': test_accuracy
-    }, ignore_index=True)
-
-results_df.to_csv("results_best_model.csv")
+    hshfdhsakdfhahkk
+all_metrics_array = np.array(all_metrics)
+header = "dataset_name, best_epoch, best_train_loss, best_train_accuracy, best_eval_loss, best_eval_accuracy, test_accuracy"
+np.savetxt('all_datasets_metrics.csv', all_metrics_array, delimiter=',', fmt='%s', header=header, comments='')

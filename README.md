@@ -66,8 +66,8 @@ python timert_cli.py pretrain --conf-file pre_mae_0000 --register
 ````
 
 Where:
-- --gpu_id: It is the identifier of the gpu to use (default is zero)
-- --conf_file: It is the file where all the model parameters are.
+- --gpu-id: It is the identifier of the gpu to use (default is zero)
+- --conf-file: It is the file where all the model parameters are.
 - --register: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations.
 
 ## Troubleshooting

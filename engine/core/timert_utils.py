@@ -64,6 +64,18 @@ def get_dataset(route, name, norm = True,  max_len = 512):
     
     return data, labels
 
+def format_time(end_time, start_time):
+    # Calcular el tiempo total del entrenamiento
+    total_time = end_time - start_time
+    total_days = int(total_time // (24 * 3600))
+    total_time = total_time % (24 * 3600)
+    total_hours = int(total_time // 3600)
+    total_time %= 3600
+    total_minutes = int(total_time // 60)
+    total_seconds = int(total_time % 60)
+
+    return f"{total_days} days, {total_hours} hours, {total_minutes} minutes, and {total_seconds} seconds"
+
 def get_ucr_dataset_names() -> np.array:
     return np.array([
         'Adiac',

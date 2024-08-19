@@ -6,10 +6,7 @@ global:
 
 # Preprocess data params
 preprocess:
-  pretrain_frac: 0.65
-  train_frac: 0.3
-  valid_frac: 0.1
-  test_frac: 0.1
+  pretrain_frac: 0.65  # Por ahora se dividen por dataset, no por instancia.
   is_same_length: True
 
 # Transformer architecture params
@@ -33,5 +30,5 @@ pretext_task:
 train:
   lr: 0.0001
   batch_size: 128
-  n_epoch: 150
+  n_epoch: 400
   # early_stopping: True # importante agregar en el futuro
