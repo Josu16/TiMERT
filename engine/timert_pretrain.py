@@ -103,6 +103,7 @@ class TimertPreTrain:
         self.mlflow.log_param("learning_rate", self.train_params["lr"])  # MLflow
         self.mlflow.log_param("loss_function", criterion.__str__())  # MLflow
         self.mlflow.log_param("n_epoch", self.train_params["n_epoch"])  # MLflow
+        self.mlflow.log_param("batch_size", self.train_params["batch_size"])  # MLflow
 
         # Iniciar el contador total de tiempo
         total_start_time = time.time()
@@ -163,8 +164,6 @@ class TimertPreTrain:
             if avg_loss < best_loss:
                 best_loss = avg_loss
                 best_epoch = epoch
-
-            soloprimerpoca
 
         total_end_time = time.time()
 
