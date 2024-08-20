@@ -59,7 +59,7 @@ def finetuning(
 
     mlflow.set_experiment("Fine-tuning")
     mlflow.enable_system_metrics_logging() # enable if need logs
-    mlflow.set_system_metrics_sampling_interval(10)
+    mlflow.set_system_metrics_sampling_interval(500)
     mlflow.start_run()
     print("MLFlow Started")
     try:
