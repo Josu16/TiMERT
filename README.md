@@ -37,18 +37,18 @@ Once the image is built, the container can be run with the respective parameters
 - -- gpus all: To take all the GPUs available in the system, this code allows you to select different GPUs to do various experiments. (remove if you do not have GPUS)
 - -v: to map the directories and make it possible to edit code from the host and have it immediately reflected in the container.
 
-```
+``` bash
 // For GPUs Infraestructure
 docker run -d -p 5000:5000 --gpus all --name timert -v ${PWD}:/opt/code timert-image
 
-// For CPU Infraestructure (not recomended)
+// For CPU only Infraestructure (not recomended)
 docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
 
 ```
 
 ## Enter to container bash
 
-```
+``` bash
 docker exec -it timert bash
 ```
 
@@ -61,14 +61,32 @@ The container includes an **instance of MLFLow UI** running in localhost and rea
 
 To start pre-training you must properly configure the parameter file for pre-training located on /parameters or create your own and indicate it in the following command:
 
-````
-python timert_cli.py pretrain --conf-file pre_mae_0000 --register
-````
+```bash
+python timert_cli.py pretrain --conf-file pre_mae_0000 --gpu-id 0 --register
+```
 
 Where:
-- --gpu-id: It is the identifier of the gpu to use (default is zero)
-- --conf-file: It is the file where all the model parameters are.
-- --register: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations.
+- ```--gpu-id```: It is the identifier of the gpu to use (default is zero)
+- ```--conf-file```: It is the file where all the model parameters are.
+- ```--register```: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations. **Use this parameter if you will fine tune the model**
+
+## Fine-Tuning
+
+To fine-tune a model it is necessary to have run the pre-training process with the ```--register``` flag. This script takes the model and the specified version from the mlflow file system.
+
+```bash
+python timert_cli.py finetuning --conf-file finet_class_0000 --gpu-id 3 --enc-name mae_first_approach --enc-ver 1
+```
+
+Where:
+- ```--gpu-id```: It is the identifier of the gpu to use (default is zero)
+- ```--conf-file```: It is the file where all the model parameters are.
+- ```--enc-name```: The name of base model
+- ```--enc-version```: The version of the base model
+
+## Review of results.
+
+All executions of both scripts are logged in MLflow, separated into two experiments: pre-train and fine-tuning. The logged artifacts and models also have their place in mlflow. http://localhost:5000
 
 ## Troubleshooting
 
