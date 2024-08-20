@@ -24,7 +24,7 @@ def pretrain(
     
     mlflow.set_experiment("Pre-train")
     mlflow.enable_system_metrics_logging() # enable if need logs
-    mlflow.set_system_metrics_sampling_interval(90)
+    mlflow.set_system_metrics_sampling_interval(600)
     mlflow.start_run()
     print("MLFlow Started")
     try:

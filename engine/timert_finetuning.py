@@ -67,7 +67,7 @@ class TimertFineTuning:
             with self.mlflow.start_run(run_name=str(data_name), nested=True):
                 print("Dataset: ", data_name)
 
-                data, labels = get_dataset("UCRArchive_2018",data_name, max_len=self.model_params["out_dim"])
+                data, labels = get_dataset("UCRArchive_2018",data_name, max_len=self.encoder_params["out_dim"])
 
                 labels, n_class = _relabel(labels)
 
