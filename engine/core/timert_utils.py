@@ -101,7 +101,7 @@ def timert_split_data(pretrain_frac, mlflow):
     print("Datasets for pre-training: ", pretrain_names)
     print("Datasets for downstream tasks: ", downstream_names)
 
-    return pretrain_frac, downstream_names
+    return pretrain_names, downstream_names
 
 def _relabel(label):
     label_set = np.unique(label)

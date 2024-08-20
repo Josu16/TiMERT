@@ -6,7 +6,6 @@ from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from TSTransformer import Transformer
 from tqdm import tqdm
 # from torch.optim import Adam
 import time

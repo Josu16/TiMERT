@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from transformers import RobertaConfig, RobertaModel, Adafactor
 
 from engine.core.ts_transformer import Transformer
-from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, get_ucr_dataset_names, mask_data, timert_split_data
+from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, mask_data, timert_split_data
 
 
 class TimertPreTrain:
@@ -51,7 +51,7 @@ class TimertPreTrain:
             self.mlflow.log_param(key, value)  # MLflow
 
         # Split dataset
-        self.pretrain_names, _ = timert_split_data(self.prep_params["pretrain_fracc"], self.mlflow)
+        self.pretrain_names, _ = timert_split_data(self.prep_params["pretrain_frac"], self.mlflow)
 
     def preprocessing_time_series(self):
         # preparación de las series temporales
@@ -163,6 +163,8 @@ class TimertPreTrain:
             if avg_loss < best_loss:
                 best_loss = avg_loss
                 best_epoch = epoch
+
+            soloprimerpoca
 
         total_end_time = time.time()
 
