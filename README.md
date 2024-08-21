@@ -52,9 +52,34 @@ docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
 docker exec -it timert bash
 ```
 
+## Data repository
+TiMERT was trained for the UCR dataset, to get started you need to download the dataset and place it in your project directory.
+
+https://www.cs.ucr.edu/~eamonn/time_series_data_2018/UCRArchive_2018.zip
+
+The parameter files include the dataset directory parameter, put the path you have chosen.
+
 ## MLFlow for experiment tracking
 
 The container includes an **instance of MLFLow UI** running in localhost and ready on the **port 5000**. All the experiments an models are located in the /mlruns directory.
+
+http://localhost:5000
+
+Using MLflow enriches the TiMERT experimentation environment by managing:
+- Experiments.
+- Model executions.
+- Artifacts.
+- Models.
+- Traceability of experiments with their parameters and code version control.
+
+## Modelos de referencia
+For comparison purposes, classification the ```KNeighborsTimeSeriesClassifier``` classifier with DTW distance is available. This script, like the fine-tuning, will take all the datasets for classification, the obtained metrics serve as a reference for the difficulty of the datasets.
+
+```bash
+python timert_cli.py dtw --conf-file dtw_0000
+```
+Where:
+- ```--conf-file```: It is the file where all the model parameters are.
 
 
 ## Pre-Train

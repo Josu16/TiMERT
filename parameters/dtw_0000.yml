@@ -1,0 +1,9 @@
+global:
+  data_dir: "UCRArchive_2018/"
+  seed: 666
+
+preprocess:
+  pretrain_frac: 0.65
+  train_frac: 0.6
+  valid_frac: 0.2
+  test_frac: 0.2

@@ -1,12 +1,33 @@
+from engine.core.reference_models.timert_dtw import TimertDTW
 import typer
 import yaml
 import mlflow
+from mlflow.tracking import MlflowClient
 
 from engine.timert_pretrain import TimertPreTrain
 from engine.timert_finetuning import TimertFineTuning
 
 app = typer.Typer()
 
+@app.command()
+def dtw(
+    conf_file: str = typer.Option(..., help="The configuration file name"),
+):
+    print(f"Selected File: {conf_file}")
+    with open(f'parameters/{conf_file}.yml', 'r') as file:
+        all_params = yaml.safe_load(file)
+    
+    mlflow.set_experiment("DTW")
+    mlflow.enable_system_metrics_logging() # enable if need logs
+    mlflow.set_system_metrics_sampling_interval(500)
+    mlflow.start_run()
+    print("MLFlow Started")
+    try:
+        timert_model = TimertDTW(params = all_params, mlflow=mlflow)
+        timert_model.run_all_classifiers()
+    finally:
+        print("MLFlow Finished")
+        mlflow.end_run()
 
 @app.command()
 def pretrain(
@@ -35,7 +56,6 @@ def pretrain(
         print("MLFlow Finished")
         mlflow.end_run()
 
-
 @app.command()
 def finetuning(
     conf_file: str = typer.Option(..., help="The configuration file name"),
@@ -63,7 +83,7 @@ def finetuning(
     mlflow.start_run()
     print("MLFlow Started")
     try:
-        timert_model = TimertFineTuning(params = all_params, encoder= encoder, mlflow=mlflow, gpu_id=gpu_id)
+        timert_model = TimertFineTuning(params = all_params, encoder= encoder, mlflow=mlflow, client_mlflow=MlflowClient(), gpu_id=gpu_id)
         timert_model.runn_all_models()
     finally:
         print("MLFlow Finished")
