@@ -1,5 +1,6 @@
 # 
 global:
+  model_name: "mae_first_approach"
   data_dir: "UCRArchive_2018/"
   max_len: 512  # Max length of time series (must match with out_dim)
   seed: 666

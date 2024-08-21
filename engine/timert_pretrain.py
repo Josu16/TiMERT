@@ -68,7 +68,7 @@ class TimertPreTrain:
         print("Pre-train dataset final shape: ", pretrain_data.shape)
         self.pretrain_data = torch.tensor(pretrain_data, dtype=torch.float32).to(self.device)  # Convertir los datos a un tensor de PyTorch
 
-    def start_pretrain(self, register):
+    def start_pretrain(self, client_mlflow, register):
         batch_size = self.train_params["batch_size"]  # Definir el tamaño del batch
         dataset = TensorDataset(self.pretrain_data)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -172,7 +172,7 @@ class TimertPreTrain:
         print(f"Pre-train completed in: {formated_time}")
 
         # MLflow: Registrar el tiempo total de entrenamiento
-        self.mlflow.log_metric("total_training_time", total_end_time)  # MLflow
+        self.mlflow.log_metric("total_training_time", total_end_time - total_start_time)  # MLflow
         self.mlflow.log_param("total_training_time_formated", formated_time)  # MLflow
 
         self.mlflow.log_metric("best_loss", best_loss)
@@ -188,4 +188,12 @@ class TimertPreTrain:
         if register:
             # MLflow: Registrar formalmente el modelo en el Model Registry
             model_uri = f"runs:/{self.mlflow.active_run().info.run_id}/timert-xfmr-2024-ir0-beta"
-            self.mlflow.register_model(model_uri, "mae_first_approach")
+            registered_model = self.mlflow.register_model(model_uri, {self.global_params["model_name"]})
+
+            # Luego, etiqueta el modelo registrado usando el cliente interno
+            client_mlflow.set_model_version_tag(
+                name=self.global_params["model_name"], 
+                version=registered_model.version, 
+                key="run_name", 
+                value=self.mlflow.active_run().data.tags.get("mlflow.runName")
+            )

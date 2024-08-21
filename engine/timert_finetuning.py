@@ -14,7 +14,7 @@ import os
 
 
 class TimertFineTuning:
-    def __init__(self, params, encoder, mlflow, gpu_id):
+    def __init__(self, params, encoder, mlflow, client_mlflow, gpu_id):
         self.mlflow = mlflow
         self.gpu_id = gpu_id
 
@@ -55,6 +55,14 @@ class TimertFineTuning:
         self.model = self.mlflow.pytorch.load_model(model_uri)
         self.model.to(self.device)
         print("tipo de dato: ", type(self.model))
+
+        # Obtener el nombre del run del que proviene para etiquetar los runs actuales
+        # Obtener los detalles del modelo registrado
+        model_info = client_mlflow.get_model_version(name=encoder['name'], version=encoder['version'])
+        pretrain_run_id = model_info.run_id
+        pretrain_run_name = model_info.tags.get("run_name")
+        self.mlflow.set_tag("pretrain_run_id", pretrain_run_id)
+        self.mlflow.set_tag("pretrain_run_name", pretrain_run_name)
 
         # split dataset (names)
         _, self.downstream_names = timert_split_data(self.prep_params["pretrain_frac"], mlflow)
@@ -252,7 +260,9 @@ class TimertFineTuning:
 
                 current_dataset_end_time = time.time()
                 formated_time = format_time(current_dataset_end_time, current_dataset_start_time)
+                self.mlflow.log_metric("total_train_eval_time", current_dataset_end_time - current_dataset_start_time)
                 print(f"train and validate completed in: {formated_time}")
+
 
 
                 ## -------------------- PRUEBA DEL MODELO. ------------------------------
@@ -260,6 +270,7 @@ class TimertFineTuning:
                 classifier.eval()
                 correct = 0
                 total = 0
+                dataset_start_test_time = time.time()
                 with torch.no_grad():
                     for inputs, labels in dataloader_test:
                         outputs = classifier.forward(inputs)
@@ -267,6 +278,9 @@ class TimertFineTuning:
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
                 test_accuracy = 100 * correct / total
+                dataset_end_test_time = time.time()
+                self.mlflow.log_metric("total_test_time", dataset_end_test_time - dataset_start_test_time)
+                print(f"test completed in: {formated_time}")
                 print(f"\n\t --- TEST --- [{data_name}] Accuracy: {test_accuracy:0.6f}% \n")
 
                 self.mlflow.log_metric("best_epoch", best_epoch)
@@ -285,7 +299,7 @@ class TimertFineTuning:
 
         print(f"Fine Tuning completed in: {formated_time}")
 
-        self.mlflow.log_metric("total_training_time", total_end_time)
+        self.mlflow.log_metric("total_training_time", total_end_time - total_start_time)
         self.mlflow.log_param("total_training_time_formated", formated_time)
 
 
