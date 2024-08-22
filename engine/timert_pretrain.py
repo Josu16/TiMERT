@@ -1,4 +1,6 @@
 import os
+from engine.core.pretext_tasks.mae_enc import MAEEncoder
+from engine.core.pretext_tasks.timert_pretext_factory_strategy import PretrainingFactory
 import torch
 import time
 from tqdm import tqdm
@@ -10,7 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from transformers import RobertaConfig, RobertaModel, Adafactor
 
 from engine.core.ts_transformer import Transformer
-from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, mask_data, timert_split_data
+from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, timert_split_data
 
 
 class TimertPreTrain:
@@ -87,21 +89,22 @@ class TimertPreTrain:
             dropout = self.model_params["dropout"]
         ).to(self.device)
 
+        # Obtener la estrategia de SSL (pretrain)
+        model, loss_strategy = PretrainingFactory.get_pretraining_strategy(self.pretext_params, model)
+
         print("Modelo inicializado:")
         print(model)
 
         # MLflow: Registrar la arquitectura del modelo
         self.mlflow.log_param("model_architecture", model.__str__())  # MLflow
 
-        # Definir la función de pérdida y el optimizador
-        criterion = nn.MSELoss()  # Por ejemplo, MSE para series temporales
+        # Definir el optimizador
         optimizer = optim.Adam(model.parameters(), lr=self.train_params["lr"])
-        aux_criterion = nn.L1Loss()  # evaluación adicional
 
         # MLflow: Registrar los parámetros de entrenamiento
         self.mlflow.log_param("optimizer_name", optimizer.__str__())  # MLflow
         self.mlflow.log_param("learning_rate", self.train_params["lr"])  # MLflow
-        self.mlflow.log_param("loss_function", criterion.__str__())  # MLflow
+        self.mlflow.log_param("loss_function", loss_strategy.__str__())  # MLflow
         self.mlflow.log_param("n_epoch", self.train_params["n_epoch"])  # MLflow
         self.mlflow.log_param("batch_size", self.train_params["batch_size"])  # MLflow
 
@@ -117,41 +120,26 @@ class TimertPreTrain:
         for epoch in range(n_epoch):  # Número de épocas
             start_time = time.time()
             total_loss = 0.0
-            total_mae = 0.0
 
             # Usamos tqdm para mostrar el progreso
             with tqdm(dataloader, unit="batch") as tepoch:
                 tepoch.set_description(f"Epoch {epoch+1}/{n_epoch}")
                 for batch in tepoch:
-                    masked_data, mask = mask_data(batch[0])  # Enmascarar datos
                     optimizer.zero_grad()
-
-                    outputs = model.forward(
-                        masked_data,
-                        normalize=False,
-                        to_numpy=False
-                    )
-
-                    outputs = outputs.unsqueeze(1)
-
-                    loss = criterion(outputs[mask], batch[0][mask])  # Comparar solo los valores enmascarados
-                    mae_loss = aux_criterion(outputs[mask], batch[0][mask])  # Calcular MAE (auxiliar)
+                    loss = loss_strategy.compute_loss(model, batch[0])
                     loss.backward()
                     optimizer.step()
 
                     total_loss += loss.item()
-                    total_mae += mae_loss.item()
                     tepoch.set_postfix(batch_loss=loss.item())  # Mostrar la pérdida del batch
 
             # Calcular el tiempo de la época y la pérdida media
             epoch_time = time.time() - start_time
             avg_loss = total_loss / len(dataloader)
-            avg_mae = total_mae / len(dataloader)
 
             # MLflow: Registrar la pérdida y el tiempo de la época
             self.mlflow.log_metric("epoch_time", epoch_time, step=epoch)  # MLflow
             self.mlflow.log_metric("average_loss", avg_loss, step=epoch)  # MLflow
-            self.mlflow.log_metric("average_mae", avg_mae, step=epoch)  # MLflow
 
             # Convertir a minutos y segundos
             minutes_epoch = int(epoch_time // 60)

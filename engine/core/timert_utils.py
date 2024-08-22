@@ -11,16 +11,6 @@ def _normalize_dataset(data):
     data = (data - data_mu) / data_sigma
     return data
 
-# Función de enmascarado para series temporales
-# TODO: Este no debería ir acá
-def mask_data(data, mask_prob=0.15):
-    mask = torch.full(data.shape, mask_prob, device=data.device)
-    mask = torch.bernoulli(mask).bool()
-    masked_data = data.clone()
-    masked_data[mask] = 0  # Asignar cero a los valores enmascarados
-    return masked_data, mask
-
-
 # TODO: Este no debería ir acá
 def get_dataset(route, name, max_len = 512):
     # train_path = route + '/' + name + '/' + name + "_TRAIN.tsv"
