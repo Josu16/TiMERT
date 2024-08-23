@@ -176,7 +176,7 @@ class TimertPreTrain:
         if register:
             # MLflow: Registrar formalmente el modelo en el Model Registry
             model_uri = f"runs:/{self.mlflow.active_run().info.run_id}/timert-xfmr-2024-ir0-beta"
-            registered_model = self.mlflow.register_model(model_uri, {self.global_params["model_name"]})
+            registered_model = self.mlflow.register_model(model_uri, self.global_params["model_name"])
 
             # Luego, etiqueta el modelo registrado usando el cliente interno
             client_mlflow.set_model_version_tag(
