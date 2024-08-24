@@ -11,18 +11,8 @@ def _normalize_dataset(data):
     data = (data - data_mu) / data_sigma
     return data
 
-# Función de enmascarado para series temporales
 # TODO: Este no debería ir acá
-def mask_data(data, mask_prob=0.15):
-    mask = torch.full(data.shape, mask_prob, device=data.device)
-    mask = torch.bernoulli(mask).bool()
-    masked_data = data.clone()
-    masked_data[mask] = 0  # Asignar cero a los valores enmascarados
-    return masked_data, mask
-
-
-# TODO: Este no debería ir acá
-def get_dataset(route, name, norm = True,  max_len = 512):
+def get_dataset(route, name, max_len = 512):
     # train_path = route + '/' + name + '/' + name + "_TRAIN.tsv"
     # test_path = route + '/' + name + '/' + name + "_TEST.tsv"
 
@@ -55,7 +45,7 @@ def get_dataset(route, name, norm = True,  max_len = 512):
     # expandir el dataset a las dimensiones que espera el codificador
     data = np.expand_dims(data, 1)
 
-    if ts_len != max_len:
+    if max_len != None and ts_len != max_len:
         # resampleo con transformada de Fourier
         data = signal.resample(data, max_len, axis = 2)  
     

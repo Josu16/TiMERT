@@ -3,6 +3,7 @@ import numpy as np
 from scipy import signal
 from engine.core.classifier import CustomTSClassifier
 from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, get_dataset, get_ucr_dataset_names, timert_split_data
+from engine.core.ts_transformer import Transformer
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -14,7 +15,7 @@ import os
 
 
 class TimertFineTuning:
-    def __init__(self, params, encoder, mlflow, gpu_id):
+    def __init__(self, params, encoder, mlflow, client_mlflow, gpu_id):
         self.mlflow = mlflow
         self.gpu_id = gpu_id
 
@@ -31,8 +32,6 @@ class TimertFineTuning:
         np.random.seed(self.global_params["seed"])
 
         self.mlflow.log_param("gpu", gpu_id)  # MLflow
-        self.mlflow.log_param("encoder_name", encoder["name"])
-        self.mlflow.log_param("encoder_version", encoder["version"])
 
         # MLflow: Registrar hiperparámetros globales
         for key, value in self.global_params.items():  # MLflow
@@ -51,13 +50,43 @@ class TimertFineTuning:
             self.mlflow.log_param(key, value)  # MLflow
 
         # Cargar el modelo preentrenado
-        model_uri = f"models:/{encoder['name']}/{encoder['version']}"
-        self.model = self.mlflow.pytorch.load_model(model_uri)
-        self.model.to(self.device)
-        print("tipo de dato: ", type(self.model))
+        self.load_pretrain_model(encoder,client_mlflow)
 
         # split dataset (names)
         _, self.downstream_names = timert_split_data(self.prep_params["pretrain_frac"], mlflow)
+
+    def load_pretrain_model(self, encoder, client_mlflow):
+        if encoder != None:
+            self.mlflow.log_param("encoder_name", encoder["name"])
+            self.mlflow.log_param("encoder_version", encoder["version"])
+            # Cargar el modelo preentrenado
+            model_uri = f"models:/{encoder['name']}/{encoder['version']}"
+            self.model = self.mlflow.pytorch.load_model(model_uri)
+            self.model.to(self.device)
+            print("tipo de dato: ", type(self.model))
+
+            # Obtener el nombre del run del que proviene para etiquetar los runs actuales
+            # Obtener los detalles del modelo registrado
+            model_info = client_mlflow.get_model_version(name=encoder['name'], version=encoder['version'])
+            pretrain_run_id = model_info.run_id
+            pretrain_run_name = model_info.tags.get("run_name")
+            self.mlflow.set_tag("pretrain_run_id", pretrain_run_id)
+            self.mlflow.set_tag("pretrain_run_name", pretrain_run_name)
+        else:
+            self.mlflow.log_param("encoder_name", "Non pretrained model")
+            # Definir el modelo
+            self.model = Transformer(
+                in_dim = self.encoder_params["in_dim"],
+                out_dim = self.encoder_params["out_dim"],
+                n_layer = self.encoder_params["n_layer"],
+                n_dim = self.encoder_params["n_dim"],
+                n_head = self.encoder_params["n_head"],
+                norm_first = self.encoder_params["norm_first"],
+                is_pos = self.encoder_params["is_pos"],
+                is_projector = self.encoder_params["is_projector"],
+                project_norm = self.encoder_params["project_norm"],
+                dropout = self.encoder_params["dropout"]
+            ).to(self.device)
 
     def runn_all_models(self):
         all_metrics = []
@@ -252,7 +281,9 @@ class TimertFineTuning:
 
                 current_dataset_end_time = time.time()
                 formated_time = format_time(current_dataset_end_time, current_dataset_start_time)
+                self.mlflow.log_metric("total_train_eval_time", current_dataset_end_time - current_dataset_start_time)
                 print(f"train and validate completed in: {formated_time}")
+
 
 
                 ## -------------------- PRUEBA DEL MODELO. ------------------------------
@@ -260,6 +291,7 @@ class TimertFineTuning:
                 classifier.eval()
                 correct = 0
                 total = 0
+                dataset_start_test_time = time.time()
                 with torch.no_grad():
                     for inputs, labels in dataloader_test:
                         outputs = classifier.forward(inputs)
@@ -267,6 +299,9 @@ class TimertFineTuning:
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
                 test_accuracy = 100 * correct / total
+                dataset_end_test_time = time.time()
+                self.mlflow.log_metric("total_test_time", dataset_end_test_time - dataset_start_test_time)
+                print(f"test completed in: {formated_time}")
                 print(f"\n\t --- TEST --- [{data_name}] Accuracy: {test_accuracy:0.6f}% \n")
 
                 self.mlflow.log_metric("best_epoch", best_epoch)
@@ -285,7 +320,7 @@ class TimertFineTuning:
 
         print(f"Fine Tuning completed in: {formated_time}")
 
-        self.mlflow.log_metric("total_training_time", total_end_time)
+        self.mlflow.log_metric("total_training_time", total_end_time - total_start_time)
         self.mlflow.log_param("total_training_time_formated", formated_time)
 
 

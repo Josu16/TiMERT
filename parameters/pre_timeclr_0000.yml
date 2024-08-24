@@ -1,6 +1,6 @@
 # 
 global:
-  model_name: "mae_first_approach"
+  model_name: "timeclr_first_approach"
   data_dir: "UCRArchive_2018/"
   max_len: 512  # Max length of time series (must match with out_dim)
   seed: 666
@@ -25,8 +25,8 @@ model:
 
 #  Self-supervised learning task params
 pretext_task:
-  pretexttask_name: "mae"
-  mask_percent: 0.15  # percentaje of points to mask
+  pretexttask_name: "timeclr"
+  aug_bank_ver: 0
 
 #  Training params
 train:

@@ -52,9 +52,41 @@ docker run -d -p 5000:5000 --name timert -v ${PWD}:/opt/code timert-image
 docker exec -it timert bash
 ```
 
+## Data repository
+TiMERT was trained for the UCR dataset, to get started you need to download the dataset and place it in your project directory.
+
+https://www.cs.ucr.edu/~eamonn/time_series_data_2018/UCRArchive_2018.zip
+
+The parameter files include the dataset directory parameter, put the path you have chosen.
+
 ## MLFlow for experiment tracking
 
 The container includes an **instance of MLFLow UI** running in localhost and ready on the **port 5000**. All the experiments an models are located in the /mlruns directory.
+
+http://localhost:5000
+
+Using MLflow enriches the TiMERT experimentation environment by managing:
+- Experiments.
+- Model executions.
+- Artifacts.
+- Models.
+- Traceability of experiments with their parameters and code version control.
+
+## Reference model
+For comparison purposes, classification the ```KNeighborsTimeSeriesClassifier``` classifier with DTW distance is available. This script, like the fine-tuning, will take all the datasets for classification, the obtained metrics serve as a reference for the difficulty of the datasets.
+
+```bash
+python timert_cli.py dtw --conf-file dtw_0000
+```
+Where:
+- ```--conf-file```: It is the file where all the model parameters are.
+
+## Non-pre-train model
+For comparative purposes, the transformer-based time series classifier can also be run using the encoder without prior training, this to determine if pre-training really improves the capacity of the classifiers.
+
+```
+python timert_cli.py non_pretrain_classifier --conf-file xfmr_class_0000 --gpu-id 0
+```
 
 
 ## Pre-Train
@@ -67,7 +99,7 @@ python timert_cli.py pretrain --conf-file pre_mae_0000 --gpu-id 0 --register
 
 Where:
 - ```--gpu-id```: It is the identifier of the gpu to use (default is zero)
-- ```--conf-file```: It is the file where all the model parameters are.
+- ```--conf-file```: It is the file where all the model parameters are. Review the existing files or create your own.
 - ```--register```: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations. **Use this parameter if you will fine tune the model**
 
 ## Fine-Tuning
