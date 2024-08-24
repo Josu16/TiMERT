@@ -85,7 +85,8 @@ class TimertFineTuning:
                 is_pos = self.encoder_params["is_pos"],
                 is_projector = self.encoder_params["is_projector"],
                 project_norm = self.encoder_params["project_norm"],
-                dropout = self.encoder_params["dropout"]
+                dropout = self.encoder_params["dropout"],
+                learnable_pos = self.encoder_params["learnable_pos"]
             ).to(self.device)
 
     def runn_all_models(self):

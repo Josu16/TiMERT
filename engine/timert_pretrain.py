@@ -86,7 +86,8 @@ class TimertPreTrain:
             is_pos = self.model_params["is_pos"],
             is_projector = self.model_params["is_projector"],
             project_norm = self.model_params["project_norm"],
-            dropout = self.model_params["dropout"]
+            dropout = self.model_params["dropout"],
+            learnable_pos = self.model_params["learnable_pos"]
         ).to(self.device)
 
         # Obtener la estrategia de SSL (pretrain)
