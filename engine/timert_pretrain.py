@@ -1,4 +1,5 @@
 import os
+from engine.core.data_provider import NumpyDataLoader
 from engine.core.pretext_tasks.mae_enc import MAEEncoder
 from engine.core.pretext_tasks.timert_pretext_factory_strategy import PretrainingFactory
 import torch
@@ -12,7 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from transformers import RobertaConfig, RobertaModel, Adafactor
 
 from engine.core.ts_transformer import Transformer
-from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, timert_split_data
+from engine.core.timert_utils import _normalize_dataset, format_time, get_dataset, set_seed, timert_split_data
 
 
 class TimertPreTrain:
@@ -32,7 +33,7 @@ class TimertPreTrain:
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'Using device: {self.device}')
-        np.random.seed(self.global_params["seed"])
+        set_seed(self.global_params["seed"])
 
         self.mlflow.log_param("gpu", gpu_id)  # MLflow
 
@@ -68,12 +69,18 @@ class TimertPreTrain:
         pretrain_data = np.concatenate(pretrain_data, axis=0)
 
         print("Pre-train dataset final shape: ", pretrain_data.shape)
-        self.pretrain_data = torch.tensor(pretrain_data, dtype=torch.float32).to(self.device)  # Convertir los datos a un tensor de PyTorch
+        self.pretrain_data = pretrain_data
 
     def start_pretrain(self, client_mlflow, register):
         batch_size = self.train_params["batch_size"]  # Definir el tamaño del batch
-        dataset = TensorDataset(self.pretrain_data)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+        # Patch to support the original implementation of timeclr TODO: Improve
+        if "timeclr" in self.global_params["model_name"]:
+            dataloader = NumpyDataLoader(self.pretrain_data, batch_size=batch_size, shuffle=True)
+        else:
+            self.pretrain_data = torch.tensor(self.pretrain_data, dtype=torch.float32).to(self.device)  # Convertir los datos a un tensor de PyTorch
+            dataset = TensorDataset(self.pretrain_data)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
         # Definir el modelo
         model = Transformer(

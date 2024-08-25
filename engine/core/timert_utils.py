@@ -54,6 +54,12 @@ def get_dataset(route, name, max_len = 512):
     
     return data, labels
 
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
 def format_time(end_time, start_time):
     # Calcular el tiempo total del entrenamiento
     total_time = end_time - start_time
