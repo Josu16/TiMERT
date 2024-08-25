@@ -48,16 +48,16 @@ class PretrainingFactory:
             aug_bank_ver = int(model_config['aug_bank_ver'])
             if aug_bank_ver == 0:
                 aug_bank = [
-                    lambda x: torch.tensor(jittering(x.cpu().numpy(), strength=0.1, seed=None)).to(x.device),
-                    lambda x: torch.tensor(smoothing(x.cpu().numpy(), max_ratio=0.5, min_ratio=0.01, seed=None)).to(x.device),
-                    lambda x: torch.tensor(mag_warping(x.cpu().numpy(), strength=1, seed=None)).to(x.device),
-                    lambda x: torch.tensor(add_slope(x.cpu().numpy(), strength=1, seed=None)).to(x.device),
-                    lambda x: torch.tensor(add_spike(x.cpu().numpy(), strength=3, seed=None)).to(x.device),
-                    lambda x: torch.tensor(add_step(x.cpu().numpy(), min_ratio=0.1, strength=1, seed=None)).to(x.device),
-                    lambda x: torch.tensor(cropping(x.cpu().numpy(), min_ratio=0.1, seed=None)).to(x.device),
-                    lambda x: torch.tensor(masking(x.cpu().numpy(), max_ratio=0.5, seed=None)).to(x.device),
-                    lambda x: torch.tensor(shifting(x.cpu().numpy(), seed=None)).to(x.device),
-                    lambda x: torch.tensor(time_warping(x.cpu().numpy(), min_ratio=0.5, seed=None)).to(x.device),
+                    lambda x:jittering(x, strength=0.1, seed=None),
+                    lambda x:smoothing(x, max_ratio=0.5, min_ratio=0.01, seed=None),
+                    lambda x:mag_warping(x, strength=1, seed=None),
+                    lambda x:add_slope(x, strength=1, seed=None),
+                    lambda x:add_spike(x, strength=3, seed=None),
+                    lambda x:add_step(x, min_ratio=0.1, strength=1, seed=None),
+                    lambda x:cropping(x, min_ratio=0.1, seed=None),
+                    lambda x:masking(x, max_ratio=0.5, seed=None),
+                    lambda x:shifting(x, seed=None),
+                    lambda x:time_warping(x, min_ratio=0.5, seed=None),
                 ]
 
             model = TimeCLREncoder(encoder, aug_bank)
