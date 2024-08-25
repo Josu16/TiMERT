@@ -27,8 +27,10 @@ class CustomTSClassifier(torch.nn.Module):
             normalize = True,
             to_numpy = False
         )
+        if isinstance(transformer_rep, tuple): # Parche para ajustar timeclr: TODO mejorar.
+            transformer_rep = transformer_rep[0]
         
         logits = self.classifier(transformer_rep)
-        logits = logits.squeeze(1) # TODO: revisar por qué se mantiene esa dimensión.
+        logits = logits.squeeze(1)
 
         return logits
