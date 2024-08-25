@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 
 def _normalize_t(t_, normalize):
-    t_ = t_.float()
     if not torch.is_tensor(t_):
         t_ = torch.from_numpy(t_)
     if len(t_.size()) == 1:

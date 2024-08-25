@@ -2,7 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from scipy import signal
 from engine.core.classifier import CustomTSClassifier
-from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, get_dataset, get_ucr_dataset_names, timert_split_data
+from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, get_dataset, get_ucr_dataset_names, set_seed, timert_split_data
 from engine.core.ts_transformer import Transformer
 import torch
 import torch.nn as nn
@@ -29,7 +29,7 @@ class TimertFineTuning:
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f'Using device: {self.device}')
-        np.random.seed(self.global_params["seed"])
+        set_seed(self.global_params["seed"])
 
         self.mlflow.log_param("gpu", gpu_id)  # MLflow
 
