@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from scipy import signal
 from engine.core.classifier import CustomTSClassifier
+from engine.core.timert_metrcis import TimertClassifierMetrics
 from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, get_dataset, get_ucr_dataset_names, set_seed, timert_split_data
 from engine.core.ts_transformer import Transformer
 import torch
@@ -85,7 +86,8 @@ class TimertFineTuning:
                 is_pos = self.encoder_params["is_pos"],
                 is_projector = self.encoder_params["is_projector"],
                 project_norm = self.encoder_params["project_norm"],
-                dropout = self.encoder_params["dropout"]
+                dropout = self.encoder_params["dropout"],
+                learnable_pos = self.encoder_params["learnable_pos"]
             ).to(self.device)
 
     def runn_all_models(self):
@@ -98,7 +100,7 @@ class TimertFineTuning:
 
                 data, labels = get_dataset("UCRArchive_2018",data_name, max_len=self.encoder_params["out_dim"])
 
-                labels, n_class = _relabel(labels)
+                labels, n_class, class_names = _relabel(labels)
 
                 # separación de conjuntos de entrenamiento, validación y prueba
 
@@ -109,6 +111,8 @@ class TimertFineTuning:
                 self.mlflow.log_param("train_fraction", train_frac)
                 self.mlflow.log_param("valid_fraction", valid_frac)
                 self.mlflow.log_param("test_fraction", test_frac)
+
+                self.mlflow.log_param("n_classes", n_class)
 
                 assert np.isclose(train_frac + valid_frac + test_frac, 1.0)
 
@@ -291,29 +295,37 @@ class TimertFineTuning:
                 classifier.eval()
                 correct = 0
                 total = 0
+                all_preds = []
+                all_labels = []
                 dataset_start_test_time = time.time()
                 with torch.no_grad():
                     for inputs, labels in dataloader_test:
                         outputs = classifier.forward(inputs)
                         _, predicted = torch.max(outputs.data, 1)
+                        all_preds.append(predicted.cpu().numpy())
+                        all_labels.append(labels.cpu().numpy())
+                        
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
-                test_accuracy = 100 * correct / total
+                
+                all_preds = np.concatenate(all_preds)
+                all_labels = np.concatenate(all_labels)
+                metrics = TimertClassifierMetrics(all_labels, all_preds, self.mlflow, class_names=class_names)
+                metrics.log_metrics_to_mlflow()
+
                 dataset_end_test_time = time.time()
                 self.mlflow.log_metric("total_test_time", dataset_end_test_time - dataset_start_test_time)
                 print(f"test completed in: {formated_time}")
-                print(f"\n\t --- TEST --- [{data_name}] Accuracy: {test_accuracy:0.6f}% \n")
+                print(f"\n\t --- TEST --- [{data_name}] Accuracy: {100 * metrics.accuracy:0.6f}% \n")
 
                 self.mlflow.log_metric("best_epoch", best_epoch)
                 self.mlflow.log_metric("best_train_loss", best_train_loss)
                 self.mlflow.log_metric("best_train_accuracy", best_train_accuracy)
                 self.mlflow.log_metric("best_eval_loss", best_eval_loss)
                 self.mlflow.log_metric("best_eval_accuracy", best_eval_accuracy)
-                self.mlflow.log_metric("test_accuracy", test_accuracy)
+                self.mlflow.log_metric("test_accuracy", 100 * metrics.accuracy)
                 # # Agregar los resultados a la lista
-                all_metrics.append([data_name, best_epoch, best_train_loss, best_train_accuracy, best_eval_loss, best_eval_accuracy, test_accuracy])
-
-                # hshfdhsakdfhahkk
+                all_metrics.append([data_name, best_epoch, best_train_loss, best_train_accuracy, best_eval_loss, best_eval_accuracy, 100 * metrics.accuracy])
 
         total_end_time = time.time()
         formated_time = format_time(total_end_time, total_start_time)

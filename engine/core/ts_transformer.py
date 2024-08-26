@@ -23,7 +23,7 @@ def _normalize_t(t_, normalize):
 class Transformer(nn.Module):
     def __init__(self, in_dim=1, out_dim=128, n_layer=8, n_dim=64, n_head=8,
                  norm_first=False, is_pos=True, is_projector=True,
-                 project_norm=None, dropout=0.0):
+                 project_norm=None, dropout=0.0, learnable_pos=False):
         r"""
         Transformer-based time series encoder
 
@@ -62,11 +62,12 @@ class Transformer(nn.Module):
 
         self.in_dim = in_dim # dimensión de entrada
         self.out_dim = out_dim # dimensión de la salida
-        self.n_dim = n_dim # número de capas del codificador transformer
+        self.n_dim = n_dim # the dimension of the feedforward network model (default=2048).
         self.is_projector = is_projector 
         self.is_pos = is_pos
         self.max_len = 0
         self.dropout = dropout
+        self.learnable_pos = learnable_pos
 
         self.in_net = nn.Conv1d(
             in_dim, n_dim, 7, stride=2, padding=3, dilation=1)
@@ -126,15 +127,19 @@ class Transformer(nn.Module):
         ts = _normalize_t(ts, normalize)
         ts = ts.to(device, dtype=torch.float32)
 
-        ts_emb = self.in_net(ts)
+        ts_emb = self.in_net(ts) ## expande los canales a 64 y reduce d_model a la mitad
         if is_pos:
             n_dim = self.n_dim
             dropout = self.dropout
             ts_len = ts_emb.size()[2]
             if ts_len > self.max_len:
                 self.max_len = ts_len
-                self.pos_net = PositionalEncoding(
-                    n_dim, ts_len, dropout=dropout)
+                if self.learnable_pos:
+                    self.pos_net = LearnablePositionalEncoding(
+                        n_dim, ts_len, dropout=dropout)
+                else:
+                    self.pos_net = PositionalEncoding(
+                        n_dim, ts_len, dropout=dropout)
                 self.pos_net.to(device)
             ts_emb = self.pos_net(ts_emb)
 
@@ -157,60 +162,25 @@ class Transformer(nn.Module):
     def encode(self, ts, normalize=True, to_numpy=False):
         return self.forward(ts, normalize=normalize, to_numpy=to_numpy)
 
-    def encode_seq(self, ts, normalize=True, to_numpy=False):
-        device = self.dummy.device
-        is_projector = self.is_projector
-        is_pos = self.is_pos
+class LearnablePositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=1024, dropout=0.1):
+        super(LearnablePositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        # Each position gets its own embedding
+        # Since indices are always 0 ... max_len, we don't have to do a look-up
+        self.pe = nn.Parameter(torch.empty(1, d_model, max_len))  # requires_grad automatically set to True
+        nn.init.uniform_(self.pe, -0.02, 0.02)
 
-        ts = _normalize_t(ts, normalize)
-        ts = ts.to(device, dtype=torch.float32)
-
-        ts_emb = self.in_net(ts)
-        if is_pos:
-            n_dim = self.n_dim
-            dropout = self.dropout
-            ts_len = ts_emb.size()[2]
-            if ts_len > self.max_len:
-                self.max_len = ts_len
-                self.pos_net = PositionalEncoding(
-                    n_dim, ts_len, dropout=dropout)
-                self.pos_net.to(device)
-            ts_emb = self.pos_net(ts_emb)
-
-        start_tokens = self.start_token.expand(ts_emb.size()[0], -1, -1)
-        ts_emb = torch.cat((start_tokens, ts_emb, ), dim=2)
-        ts_emb = torch.transpose(ts_emb, 1, 2)
-
-        ts_emb = self.transformer(ts_emb)
-        ts_emb = self.out_net(ts_emb)
-        if is_projector:
-            project_norm = self.project_norm
-            if project_norm == 'BN':
-                layers = [module for module in is_projector.modules()]
-                ts_emb = torch.transpose(ts_emb, 1, 2)
-                ts_emb = layers[1](ts_emb)
-                ts_emb = torch.transpose(ts_emb, 1, 2)
-                ts_emb = layers[2](ts_emb)
-                ts_emb = layers[3](ts_emb)
-                ts_emb = torch.transpose(ts_emb, 1, 2)
-                ts_emb = layers[4](ts_emb)
-                ts_emb = torch.transpose(ts_emb, 1, 2)
-                ts_emb = layers[5](ts_emb)
-                ts_emb = layers[6](ts_emb)
-            else:
-                ts_emb = self.projector(ts_emb)
-
-        ts_emb = ts_emb[:, 1:, :]
-        start_tokens = ts_emb[:, 0:1, :]
-        start_tokens = start_tokens.expand(-1, ts_emb.size()[1], -1)
-        ts_emb = ts_emb + start_tokens
-        ts_emb = torch.transpose(ts_emb, 1, 2)
-
-        if to_numpy:
-            return ts_emb.cpu().detach().numpy()
-        else:
-            return ts_emb
-
+    def forward(self, x):
+        r"""Inputs of forward function
+        Args:
+            x: the sequence fed to the positional encoder model (required).
+        Shape:
+            x: [batch_size, embed dim, max_len]
+            output: [batch_size, embed dim, max_len]
+        """
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
 
 class PositionalEncoding(nn.Module):
     def __init__(self, n_dim, max_len, dropout=0.0):
@@ -220,7 +190,7 @@ class PositionalEncoding(nn.Module):
         position = torch.arange(max_len)
         div_term = torch.exp(
             torch.arange(0, n_dim, 2) * (-math.log(10000.0) / n_dim))
-        pos_emb = torch.zeros(1, n_dim, max_len)
+        pos_emb = torch.zeros(1, n_dim, max_len) # 1 x 64 x 256
 
         position = position.unsqueeze(0)
         div_term = div_term.unsqueeze(1)
@@ -229,6 +199,6 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pos_emb', pos_emb, persistent=False)
 
     def forward(self, x):
-        x = x + self.pos_emb[:, :, :x.size()[2]]
+        x = x + self.pos_emb[:, :, :x.size()[2]] ## batch_sizex64x256 + 1x64x256 : pytorch do broadcasting
         return self.dropout(x)
 

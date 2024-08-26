@@ -106,7 +106,7 @@ def _relabel(label):
     label_re = np.zeros(label.shape[0], dtype=int)
     for i, label_i in enumerate(label_set):
         label_re[label == label_i] = i
-    return label_re, n_class
+    return label_re, n_class, label_set
 
 def get_ucr_dataset_names() -> np.array:
     return np.array([
