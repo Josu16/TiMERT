@@ -19,7 +19,7 @@ encoder:
   n_layer: 4          # Group of bocks of attention
   n_dim: 64           # Intern representation dimensions
   n_head: 8           # Attention heads
-  norm_first: True    # ?? review
+  norm_first: True    # If true. the norm will be applied before transformer sub-layers
   is_pos: True        # If positional encoding will be applied
   is_projector: True  # If projection will be applied
   project_norm: "LN"  # Id projection will be norm
