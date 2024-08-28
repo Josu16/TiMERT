@@ -42,6 +42,8 @@ RUN pip install -r /opt/code/requirements.txt
 # Exponer el puerto en el que se ejecutará MLflow
 EXPOSE 5000
 
+EXPOSE 8888
+
 # Establecer el punto de entrada y el comando por defecto
 ENTRYPOINT ["mlflow", "ui"]
 CMD ["--host", "0.0.0.0", "--port", "5000"]

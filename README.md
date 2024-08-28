@@ -85,7 +85,7 @@ Where:
 For comparative purposes, the transformer-based time series classifier can also be run using the encoder without prior training, this to determine if pre-training really improves the capacity of the classifiers.
 
 ```
-python timert_cli.py non_pretrain_classifier --conf-file xfmr_class_0000 --gpu-id 0
+python timert_cli.py non-pretrain-classifier --conf-file xfmr_class_0000 --gpu-id 3
 ```
 
 

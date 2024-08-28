@@ -24,6 +24,7 @@ encoder:
   is_projector: True  # If projection will be applied
   project_norm: "LN"  # Id projection will be norm
   dropout: 0.0
+  learnable_pos: False # If the positional encoder will be learnable (true), fixed (false)
 
 #  Downstream task
 classifier:
