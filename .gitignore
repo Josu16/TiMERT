@@ -2,3 +2,4 @@ UCRArchive_2018/*
 mlruns/*
 
 __pycache__/
+.ipynb*
