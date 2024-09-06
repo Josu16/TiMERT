@@ -156,6 +156,9 @@ class TimertFineTuning:
 
                 self.mlflow.log_param("classifier_architecture", classifier.__str__())
 
+                num_params = sum(p.numel() for p in classifier.parameters())
+                print(f"El modelo tiene {num_params} parámetros.")
+
                 ## -------------------- PREPARACIÓN y ENTRENAMIENTO DEL MODELO ------------------------------
 
                 ## Parámetros:
@@ -273,15 +276,13 @@ class TimertFineTuning:
                     seconds_epoch = int(epoch_time % 60)
                     print(f"Epoch {epoch+1} completed in {minutes_epoch} minutes and {seconds_epoch} seconds ({epoch_time:.2f} seconds).")
 
-                    # # Buscar el mejor modelo
-                    if avg_val_loss < best_eval_loss:
-                        best_epoch = epoch
-                        best_model_params = classifier.state_dict()
+                    best_epoch = epoch
+                    best_model_params = classifier.state_dict()
 
-                        best_train_loss = avg_train_loss
-                        best_train_accuracy = train_accuracy
-                        best_eval_loss = avg_val_loss
-                        best_eval_accuracy = eval_accuracy
+                    best_train_loss = avg_train_loss
+                    best_train_accuracy = train_accuracy
+                    best_eval_loss = avg_val_loss
+                    best_eval_accuracy = eval_accuracy
 
                 current_dataset_end_time = time.time()
                 formated_time = format_time(current_dataset_end_time, current_dataset_start_time)

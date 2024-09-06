@@ -103,6 +103,9 @@ class TimertPreTrain:
         print("Modelo inicializado:")
         print(model)
 
+        num_params = sum(p.numel() for p in model.parameters())
+        print(f"El modelo tiene {num_params} parámetros.")
+
         # MLflow: Registrar la arquitectura del modelo
         self.mlflow.log_param("model_architecture", model.__str__())  # MLflow
 

@@ -137,6 +137,8 @@ class Transformer(nn.Module):
                 if self.learnable_pos:
                     self.pos_net = LearnablePositionalEncoding(
                         n_dim, ts_len, dropout=dropout)
+                    num_params = sum(p.numel() for p in self.pos_net.parameters())
+                    print(f"El PE tiene {num_params} parámetros.")
                 else:
                     self.pos_net = PositionalEncoding(
                         n_dim, ts_len, dropout=dropout)

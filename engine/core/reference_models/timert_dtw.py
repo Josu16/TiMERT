@@ -4,6 +4,7 @@ import numpy as np
 import tslearn.neighbors
 from sklearn.model_selection import train_test_split
 from engine.core.timert_utils import _normalize_dataset, _relabel, format_time, get_dataset, timert_split_data
+from engine.core.timert_metrcis import TimertClassifierMetrics
 
 
 class TimertDTW():
@@ -29,7 +30,7 @@ class TimertDTW():
 
                 data, labels = get_dataset(self.global_params["data_dir"], data_name, max_len=None)
 
-                labels, n_class = _relabel(labels)
+                labels, n_class, class_names = _relabel(labels)
 
                 # separación de conjuntos de entrenamiento, validación y prueba
 
@@ -95,7 +96,8 @@ class TimertDTW():
                     valid_data, valid_labels, model)
                 predict_test, acc_test, time_test = self._get_predict(
                     test_data, test_labels, model)
-                
+                metrics = TimertClassifierMetrics(test_labels, predict_test, self.mlflow, class_names=class_names)
+                metrics.log_metrics_to_mlflow()
                 
                 self.mlflow.log_metric("validation_accuracy", acc_valid)
                 self.mlflow.log_metric("total_train_eval_time", time_valid)
