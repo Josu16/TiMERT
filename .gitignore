@@ -3,3 +3,5 @@ mlruns/*
 
 __pycache__/
 .ipynb*
+*.png
+*.csv

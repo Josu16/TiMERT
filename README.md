@@ -100,7 +100,7 @@ python timert_cli.py pretrain --conf-file pre_mae_0000 --gpu-id 0 --register
 Where:
 - ```--gpu-id```: It is the identifier of the gpu to use (default is zero)
 - ```--conf-file```: It is the file where all the model parameters are. Review the existing files or create your own.
-- ```--register```: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for cheeck the environment or try other configurations. **Use this parameter if you will fine tune the model**
+- ```--register```: if the parameter appears, MLflow will register and version the output model, otherwise it will just save. Avoid this parameter is useful to execute "testing" version models for check the environment or try other configurations. **Use this parameter if you will fine tune the model**
 
 ## Fine-Tuning
 
@@ -120,7 +120,16 @@ Where:
 
 All executions of both scripts are logged in MLflow, separated into two experiments: pre-train and fine-tuning. The logged artifacts and models also have their place in mlflow. http://localhost:5000
 
+### Jupyter notebook for advanced results analytics
+With the MLflow api and MLflow client you can get all the metrics of the executions and experiments, by default TiMERT includes an instance of Jupyter Lab running in the 8888 port. So You can check the localhost:8888 url and set the pasword for jupyter lab.
+
+The ```Results analysis.ipynb``` file includes the analysis of original results.
+
 ## Troubleshooting
+
+### MLflow
+
+#### Multiple tunel ssh
 
 Getting MLflow UI up and running is easy if you are working directly on the container from the local machine because the container run command maps the corresponding ports, but, if there are more ssh connections in between. For example: Host -> Server 1 -> Server 2 -> TiMERT container, it will be necessary to set the number of ssh tunnels needed to reach the container, for this case it would have to be done like this:
 
@@ -145,3 +154,23 @@ netstat -tuln | grep 5000
 ```
 
 If the above command gives an output before starting the container, then it is busy and you need to modify the dockerfile and port mapping to a free one before running the container.
+
+### Jupyter
+
+#### Stability connection
+Sometimes if the container is restarted the jupyter server is down. To fix that it is necessary check the status of the process:
+```
+ps aux | grep jupyter
+```
+
+If the command responds with the jupyter in execution and the servers does not resopond, yo must to kill the process, check the PID of jupyter and execute:
+
+```
+kill -9 <PID>
+```
+
+After start the jupyter server:
+
+´´´
+jupyter notebook --no-browser --port=8888 --ip=0.0.0.0 --allow-root
+´´´
